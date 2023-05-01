@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stranded", "Stranded.csproj", "{C81F5194-1EDB-4DCF-AB85-22907CD8A49D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stranded", "Stranded/Stranded.csproj", "{C81F5194-1EDB-4DCF-AB85-22907CD8A49D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
