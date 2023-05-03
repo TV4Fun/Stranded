@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 namespace Stranded
@@ -7,18 +8,18 @@ namespace Stranded
     [KSPAddon(KSPAddon.Startup.Flight, false)]
     public class Stranded : MonoBehaviour
     {
-        private GameObject sphere;
+        //private GameObject sphere;
         private Vector3 target;
-        private List<KerbalEVA> kerbals;
+        private List<AutoKerbalEVA> kerbals;
 
         public void Start()
         {
-            sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            /*sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.GetComponent<Collider>().enabled = false;
             sphere.transform.SetParent(SpaceCenter.Instance.SpaceCenterTransform);
-            sphere.transform.localScale = 1.0f * Vector3.one;
+            sphere.transform.localScale = 1.0f * Vector3.one;*/
 
-            kerbals = new List<KerbalEVA>();
+            kerbals = new List<AutoKerbalEVA>();
             // sphere.SetLayerRecursive(2);
 
             /*for (int i = 0; i < 32; ++i)
@@ -49,7 +50,7 @@ namespace Stranded
             Debug.Log("Mouse.screenPos: " + Mouse.screenPos);
             Debug.Log("Input.mousePosition: " + Input.mousePosition);
             Debug.Log("Casting ray " + ray);*/
-            bool isHit = Physics.Raycast(ray, out hit, 10000.0f/*, 1 << 15*/);
+            bool isHit = Physics.Raycast(ray, out hit, 10000.0f /*, 1 << 15*/);
             if (!isHit)
             {
                 //Debug.Log("No hit");
@@ -62,41 +63,31 @@ namespace Stranded
                 target = hit.point;
                 if (Input.GetKeyDown(KeyCode.K))
                 {
-                    KerbalEVA eva = SpawnKerbal(hit.point);
+                    AutoKerbalEVA eva = SpawnAutoKerbal(hit.point);
+                    eva.OnWalkByWire += FlyKerbal;
                     kerbals.Add(eva);
-                    eva.vessel.OnFlyByWire += flyKerbal;
-                }
-
-                foreach (KerbalEVA eva in kerbals)
-                {
-                    FlightCtrlState flightCtrlState = new FlightCtrlState();
-                    eva.vessel.GetControlState(flightCtrlState);
-                    Vector3 direction = (target - eva.transform.position).normalized;
-                    /*flightCtrlState.X = direction.x;
-                    flightCtrlState.Y = direction.y;
-                    flightCtrlState.Z = direction.z;
-                    flightCtrlState.yaw = direction.x;
-                    flightCtrlState.pitch = direction.y;*/
-
-                    eva.vessel.SetControlState(flightCtrlState);
                 }
             }
         }
 
-        protected void flyKerbal(FlightCtrlState ctrlState)
+        protected void FlyKerbal(AutoKerbalEVA eva)
         {
-            ctrlState.X = 1.0f;
-            ctrlState.Y = 1.0f;
-            ctrlState.Z = 1.0f;
-            ctrlState.pitch = 1.0f;
-            ctrlState.yaw = 1.0f;
-            ctrlState.roll = 1.0f;
+            eva.SetWaypoint(target);
         }
-        
-        public static KerbalEVA SpawnKerbal(Vector3 position)
+
+        public static AutoKerbalEVA SpawnAutoKerbal(Vector3 position)
         {
             ProtoCrewMember nextOrNewKerbal = HighLogic.CurrentGame.CrewRoster.GetNextOrNewKerbal();
-            KerbalEVA eva = FlightEVA.Spawn(nextOrNewKerbal);
+            KerbalEVA oldEva = FlightEVA.Spawn(nextOrNewKerbal);
+            AutoKerbalEVA eva = oldEva.gameObject.AddComponent<AutoKerbalEVA>();
+            FieldInfo[] sourceFields =
+                typeof(KerbalEVA).GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (FieldInfo field in sourceFields)
+            {
+                field.SetValue(eva, field.GetValue(oldEva));
+            }
+            Destroy(oldEva);
             eva.gameObject.SetActive(true);
             eva.part.vessel = eva.gameObject.AddComponent<Vessel>();
             eva.vessel.Initialize();
@@ -108,7 +99,7 @@ namespace Stranded
             eva.vessel.vesselName = nextOrNewKerbal.name;
             eva.vessel.vesselType = VesselType.EVA;
             eva.vessel.launchedFrom = FlightGlobals.ActiveVessel.launchedFrom;
-            eva.vessel.orbit.referenceBody = FlightGlobals.getMainBody((Vector3d) eva.transform.position);
+            eva.vessel.orbit.referenceBody = FlightGlobals.getMainBody((Vector3d)eva.transform.position);
             eva.part.flagURL = FlightGlobals.ActiveVessel.rootPart.flagURL;
             eva.part.flightID = ShipConstruction.GetUniqueFlightID(HighLogic.CurrentGame.flightState);
             eva.part.missionID = ShipConstruction.GetUniqueFlightID(HighLogic.CurrentGame.flightState);
@@ -119,6 +110,12 @@ namespace Stranded
             // this.StartCoroutine(this.SwitchToEVAVesselWhenReady(eva));
 
             return eva;
+        }
+
+        public static KerbalEVA _Spawn(ProtoCrewMember pcm)
+        {
+            AvailablePart part = PartLoader.getPartInfoByName(pcm.GetKerbalEVAPartName());
+            return Instantiate(part.partPrefab.gameObject).GetComponent<KerbalEVA>();
         }
     }
 }

@@ -4,10 +4,14 @@ namespace Stranded
 {
     public class AutoKerbalEVA : KerbalEVA
     {
-        public new Vector3 tgtRpos
+        public delegate void ControlCallback(AutoKerbalEVA eva);
+
+        public ControlCallback OnWalkByWire = (AutoKerbalEVA eva) => { };
+
+        protected override void HandleMovementInput()
         {
-            get { return base.tgtRpos; }
-            set { base.tgtRpos = value; }
+            base.HandleMovementInput();
+            OnWalkByWire(this);
         }
     }
 }
