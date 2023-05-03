@@ -35,8 +35,8 @@
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <PropertyGroup>
-      <PostBuildEvent># cp "$(TargetPath)" "$(KSPDIR)/GameData/Stranded/"
-echo $(ConfigurationName)</PostBuildEvent>
+      <PostBuildEvent>cp Stranded.* "$(KSPDIR)/GameData/Stranded/"
+</PostBuildEvent>
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="Assembly-CSharp">
@@ -74,6 +74,7 @@ echo $(ConfigurationName)</PostBuildEvent>
         </Reference>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="AutoKerbalEVA.cs" />
         <Compile Include="Stranded.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>
