@@ -19,7 +19,7 @@
         <OutputPath>$(BaseOutputPath)\$(Configuration)</OutputPath>
         <PlatformTarget>AnyCPU</PlatformTarget>
         <DebugSymbols>true</DebugSymbols>
-        <DebugType>full</DebugType>
+        <DebugType>portable</DebugType>
         <Optimize>false</Optimize>
         <DefineConstants>DEBUG;TRACE</DefineConstants>
         <ErrorReport>prompt</ErrorReport>
@@ -74,7 +74,7 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="AutoKerbalEVA.cs" />
+        <Compile Include="AIKerbalEVA.cs" />
         <Compile Include="Stranded.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
     </ItemGroup>

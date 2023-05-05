@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace Stranded
 {
-    public class AutoKerbalEVA : KerbalEVA
+    public class AIKerbalEVA : KerbalEVA
     {
-        public delegate void ControlCallback(AutoKerbalEVA eva);
+        public delegate void ControlCallback(AIKerbalEVA eva);
 
-        public ControlCallback OnWalkByWire = (AutoKerbalEVA eva) => { };
+        public ControlCallback OnWalkByWire = (AIKerbalEVA eva) => { };
 
         protected override void HandleMovementInput()
         {

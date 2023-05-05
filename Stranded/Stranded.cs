@@ -10,7 +10,8 @@ namespace Stranded
     {
         //private GameObject sphere;
         private Vector3 target;
-        private List<AutoKerbalEVA> kerbals;
+        private List<AIKerbalEVA> kerbals;
+        private Camera mainCamera;
 
         public void Start()
         {
@@ -19,7 +20,8 @@ namespace Stranded
             sphere.transform.SetParent(SpaceCenter.Instance.SpaceCenterTransform);
             sphere.transform.localScale = 1.0f * Vector3.one;*/
 
-            kerbals = new List<AutoKerbalEVA>();
+            kerbals = new List<AIKerbalEVA>();
+            mainCamera = Camera.main;
             // sphere.SetLayerRecursive(2);
 
             /*for (int i = 0; i < 32; ++i)
@@ -45,7 +47,7 @@ namespace Stranded
             // Debug.Log("Hello world! " + Time.realtimeSinceStartup);
             RaycastHit hit;
 
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
             /*Debug.DrawRay(ray.origin, ray.direction * 10, Color.yellow);
             Debug.Log("Mouse.screenPos: " + Mouse.screenPos);
             Debug.Log("Input.mousePosition: " + Input.mousePosition);
@@ -63,31 +65,23 @@ namespace Stranded
                 target = hit.point;
                 if (Input.GetKeyDown(KeyCode.K))
                 {
-                    AutoKerbalEVA eva = SpawnAutoKerbal(hit.point);
+                    AIKerbalEVA eva = SpawnAIKerbal(hit.point);
                     eva.OnWalkByWire += FlyKerbal;
                     kerbals.Add(eva);
                 }
             }
         }
 
-        protected void FlyKerbal(AutoKerbalEVA eva)
+        protected void FlyKerbal(AIKerbalEVA eva)
         {
             eva.SetWaypoint(target);
         }
 
-        public static AutoKerbalEVA SpawnAutoKerbal(Vector3 position)
+        public AIKerbalEVA SpawnAIKerbal(Vector3 position)
         {
             ProtoCrewMember nextOrNewKerbal = HighLogic.CurrentGame.CrewRoster.GetNextOrNewKerbal();
-            KerbalEVA oldEva = FlightEVA.Spawn(nextOrNewKerbal);
-            AutoKerbalEVA eva = oldEva.gameObject.AddComponent<AutoKerbalEVA>();
-            FieldInfo[] sourceFields =
-                typeof(KerbalEVA).GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            AIKerbalEVA eva = _Spawn_AI_EVA(nextOrNewKerbal);
 
-            foreach (FieldInfo field in sourceFields)
-            {
-                field.SetValue(eva, field.GetValue(oldEva));
-            }
-            Destroy(oldEva);
             eva.gameObject.SetActive(true);
             eva.part.vessel = eva.gameObject.AddComponent<Vessel>();
             eva.vessel.Initialize();
@@ -112,10 +106,19 @@ namespace Stranded
             return eva;
         }
 
-        public static KerbalEVA _Spawn(ProtoCrewMember pcm)
+        public AIKerbalEVA _Spawn_AI_EVA(ProtoCrewMember pcm)
         {
-            AvailablePart part = PartLoader.getPartInfoByName(pcm.GetKerbalEVAPartName());
-            return Instantiate(part.partPrefab.gameObject).GetComponent<KerbalEVA>();
+            KerbalEVA oldEva = FlightEVA._Spawn(pcm);
+            AIKerbalEVA eva = oldEva.gameObject.AddComponent<AIKerbalEVA>();
+            FieldInfo[] sourceFields =
+                typeof(KerbalEVA).GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (FieldInfo field in sourceFields)
+            {
+                field.SetValue(eva, field.GetValue(oldEva));
+            }
+            Destroy(oldEva);
+            return eva;
         }
     }
 }
