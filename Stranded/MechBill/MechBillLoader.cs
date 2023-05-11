@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Stranded
 {
     [HarmonyPatch(typeof(PartLoader), nameof(PartLoader.StartLoad))]
-    public class StrandedKerbalEVALoader
+    public class MechBillLoader
     {
         [UsedImplicitly]
         static bool Prefix(PartLoader __instance)
@@ -18,7 +18,7 @@ namespace Stranded
                 {
                     bool wasActive = part.partPrefab.gameObject.activeSelf;
                     part.partPrefab.gameObject.SetActive(false);
-                    StrandedKerbalEVA eva = part.partPrefab.gameObject.AddComponent<StrandedKerbalEVA>();
+                    MechBill eva = part.partPrefab.gameObject.AddComponent<MechBill>();
                     FieldInfo[] sourceFields =
                         typeof(KerbalEVA).GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 

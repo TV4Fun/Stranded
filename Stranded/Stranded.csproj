@@ -75,10 +75,10 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="StrandedKerbalEVA.cs" />
+        <Compile Include="MechBill\MechBill.cs" />
+        <Compile Include="MechBill\MechBillLoader.cs" />
         <Compile Include="Stranded.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
-        <Compile Include="StrandedKerbalEVALoader.cs" />
         <Compile Include="StrandedLoader.cs" />
     </ItemGroup>
     <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
