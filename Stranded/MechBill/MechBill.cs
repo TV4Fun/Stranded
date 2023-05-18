@@ -1,7 +1,7 @@
 using JetBrains.Annotations;
 using UnityEngine;
 
-namespace Stranded
+namespace Stranded.MechBill
 {
     public class MechBill : KerbalEVA
     {

@@ -3,7 +3,7 @@ using HarmonyLib;
 using JetBrains.Annotations;
 using UnityEngine;
 
-namespace Stranded
+namespace Stranded.MechBill
 {
     [HarmonyPatch(typeof(PartLoader), nameof(PartLoader.StartLoad))]
     public class MechBillLoader

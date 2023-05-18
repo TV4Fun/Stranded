@@ -9,7 +9,7 @@ namespace Stranded
     {
         //private GameObject sphere;
         private Vector3 target;
-        private List<MechBill> kerbals;
+        private List<MechBill.MechBill> kerbals;
         private Camera mainCamera;
 
         public void Awake()
@@ -19,7 +19,7 @@ namespace Stranded
 
         public void AttachToKerbal(GameEvents.FromToAction<Part, Part> action)
         {
-            action.to.GetComponent<MechBill>().OnFlyByWire += controlPitch;
+            action.to.GetComponent<MechBill.MechBill>().OnFlyByWire += controlPitch;
         }
 
         public void Start()
@@ -29,7 +29,7 @@ namespace Stranded
             sphere.transform.SetParent(SpaceCenter.Instance.SpaceCenterTransform);
             sphere.transform.localScale = 1.0f * Vector3.one;*/
 
-            kerbals = new List<MechBill>();
+            kerbals = new List<MechBill.MechBill>();
             mainCamera = Camera.main;
             GameEvents.onCrewOnEva.Add(AttachToKerbal);
             // sphere.SetLayerRecursive(2);
@@ -75,7 +75,7 @@ namespace Stranded
                 target = hit.point;
                 if (Input.GetKeyDown(KeyCode.J))
                 {
-                    MechBill eva = SpawnAIKerbal(hit.point);
+                    MechBill.MechBill eva = SpawnAIKerbal(hit.point);
                     eva.OnWalkByWire += FlyKerbal;
                     kerbals.Add(eva);
                 }
@@ -92,15 +92,15 @@ namespace Stranded
             if (Input.GetKey(KeyCode.Keypad9)) state.roll = 1.0f;
         }
 
-        protected void FlyKerbal(MechBill eva)
+        protected void FlyKerbal(MechBill.MechBill eva)
         {
             eva.SetWaypoint(target);
         }
 
-        public MechBill SpawnAIKerbal(Vector3 position)
+        public MechBill.MechBill SpawnAIKerbal(Vector3 position)
         {
             ProtoCrewMember nextOrNewKerbal = HighLogic.CurrentGame.CrewRoster.GetNextOrNewKerbal();
-            MechBill eva = (MechBill)FlightEVA.Spawn(nextOrNewKerbal);
+            MechBill.MechBill eva = (MechBill.MechBill)FlightEVA.Spawn(nextOrNewKerbal);
 
             eva.gameObject.SetActive(true);
             eva.part.vessel = eva.gameObject.AddComponent<Vessel>();
