@@ -21,8 +21,6 @@ namespace Stranded.MechBill
         protected static MechBillConstructionModeController instance;
         public EVAConstructionModeEditor evaEditor;
         public EVAConstructionToolsUI evaToolsUI;
-        [SerializeField] protected LayerMask markerCamCullingMask;
-        protected Camera markerCam;
         [SerializeField] protected UIPanelTransition constructionModeTransition;
         [SerializeField] protected UIPanelTransition navballTransition;
         protected bool navballPreviouslyOpen;
@@ -33,9 +31,9 @@ namespace Stranded.MechBill
         protected List<InventoryDisplayItem> displayedInventories;
         [SerializeField] protected RectTransform partList;
         protected Vector2 partListVector;
-        [SerializeField] protected RectTransform footerConstruction;
+        [SerializeField] protected RectTransform footer;
         protected bool hover;
-        protected ApplicationLauncherButton applauncherConstruction;
+        protected ApplicationLauncherButton appLauncherButton;
         [SerializeField] protected Button exitButton;
         [SerializeField] protected TooltipController_Text exitTooltipText;
         [SerializeField] protected RectTransform exitButtonOriginalPos;
@@ -65,7 +63,7 @@ namespace Stranded.MechBill
 
         protected void Start()
         {
-            if (footerConstruction != null) footerConstruction.anchoredPosition = Vector2.zero;
+            if (footer != null) footer.anchoredPosition = Vector2.zero;
 
             GameEvents.onGameSceneLoadRequested.Add(OnGameSceneLoadRequested);
             GameEvents.onVesselChange.Add(OnVesselChange);
@@ -89,16 +87,15 @@ namespace Stranded.MechBill
             GameEvents.onLevelWasLoaded.Remove(OnLoadedScene);
             GameEvents.onGUIActionGroupFlightShowing.Remove(OnActionGroupsOpened);
             GameEvents.OnCombinedConstructionWeightLimitChanged.Remove(UpdateInfoLabels);
-            if (markerCam != null && markerCam.gameObject != null) Destroy(markerCam.gameObject);
 
             exitButton.onClick.RemoveListener(ClosePanel);
         }
 
         protected void SetAppLauncherButtonVisibility()
         {
-            if (applauncherConstruction != null)
+            if (appLauncherButton != null)
             {
-                applauncherConstruction.VisibleInScenes = CanOpenConstructionPanel()
+                appLauncherButton.VisibleInScenes = CanOpenPanel()
                     ? ApplicationLauncher.AppScenes.FLIGHT
                     : ApplicationLauncher.AppScenes.NEVER;
             }
@@ -109,7 +106,7 @@ namespace Stranded.MechBill
             if (GameSettings.EVA_CONSTRUCTION_MODE_TOGGLE.GetKeyUp())
             {
                 if (IsOpen) ClosePanel();
-                else OpenConstructionPanel();
+                else OpenPanel();
             }
 
             if (!isOpen) return;
@@ -126,26 +123,26 @@ namespace Stranded.MechBill
 
         public void RegisterAppButtonConstruction(ApplicationLauncherButton button)
         {
-            applauncherConstruction = button;
+            appLauncherButton = button;
             SetAppLauncherButtonVisibility();
         }
 
-        public void OpenConstructionPanel()
+        public void OpenPanel()
         {
-            if (!CanOpenConstructionPanel() || IsOpen) return;
+            if (!CanOpenPanel() || IsOpen) return;
 
             navballPreviouslyOpen = navballTransition.State == "In";
             if (navballPreviouslyOpen) navballTransition.Transition("Out");
 
             ControlTypes controlTypes = InputLockManager.SetControlLock(ControlTypes.MAP_TOGGLE,
                 nameof(MechBillConstructionModeController));
-            constructionModeTransition.Transition("In");
+            if (constructionModeTransition != null) constructionModeTransition.Transition("In");
             exitButton.transform.position = this.exitButtonOriginalPos.position;
             typeof(EVAConstructionToolsUI).GetMethod("ShowModeTools", BindingFlags.NonPublic | BindingFlags.Instance)
                 .Invoke(evaToolsUI, null);
             exitTooltipText.textString = Localizer.Format("#autoLOC_8003410");
-            footerConstruction.gameObject.SetActive(true);
-            partListVector.y = footerConstruction.offsetMax.y;
+            footer.gameObject.SetActive(true);
+            partListVector.y = footer.offsetMax.y;
             partList.offsetMin = partListVector;
 
             isOpen = true;
@@ -156,7 +153,7 @@ namespace Stranded.MechBill
 
             SearchForInventoryParts();
             UpdateInfoLabels();
-            if (applauncherConstruction != null) applauncherConstruction.SetTrue(false);
+            if (appLauncherButton != null) appLauncherButton.SetTrue(false);
 
             GameEvents.OnEVAConstructionMode.Fire(true);
         }
@@ -179,11 +176,11 @@ namespace Stranded.MechBill
 
             displayedInventories.Clear();
 
-            if (applauncherConstruction != null) applauncherConstruction.SetFalse();
+            if (appLauncherButton != null) appLauncherButton.SetFalse();
             GameEvents.OnEVAConstructionMode.Fire(false);
         }
 
-        protected bool CanOpenConstructionPanel()
+        protected bool CanOpenPanel()
         {
             return HighLogic.LoadedSceneIsFlight && !MapView.MapIsEnabled && FlightGlobals.ActiveVessel != null &&
                    !FlightGlobals.ActiveVessel.isEVA;
@@ -197,7 +194,7 @@ namespace Stranded.MechBill
 
         protected void OnVesselChange(Vessel vessel)
         {
-            if (isOpen && !CanOpenConstructionPanel()) ClosePanel();
+            if (isOpen && !CanOpenPanel()) ClosePanel();
             SetAppLauncherButtonVisibility();
             loadedModuleInventoryParts.Clear();
             SearchForInventoryParts();
@@ -265,9 +262,11 @@ namespace Stranded.MechBill
             {
                 ModuleInventoryPart inventoryModule = part.FindModuleImplementing<ModuleInventoryPart>();
 
+                // BUG: Do we still need this check?
                 if (inventoryModule != null && (!part.isKerbalEVA() || parts.Count == 1))
                     LoadModuleInventoryPart(part.persistentId, inventoryModule);
 
+                // BUG: vessel.isEVA should always be false here.
                 if (!vessel.isEVA && part.protoModuleCrew != null)
                 {
                     foreach (ProtoCrewMember protoCrew in part.protoModuleCrew)
@@ -357,33 +356,11 @@ namespace Stranded.MechBill
             return displayItem != null;
         }
 
-        public void OnPointerEnter(PointerEventData eventData) => this.hover = true;
+        public void OnPointerEnter(PointerEventData eventData) => hover = true;
 
-        public void OnPointerExit(PointerEventData eventData) => this.hover = false;
+        public void OnPointerExit(PointerEventData eventData) => hover = false;
 
-        protected void SpawnMarkerCamera()
-        {
-            markerCam = new GameObject("markerCam").AddComponent<Camera>();
-            markerCam.cullingMask = (int)this.markerCamCullingMask;
-            markerCam.orthographic = false;
-            markerCam.nearClipPlane = 0.3f;
-            markerCam.farClipPlane = 1000f;
-            markerCam.depth = 1f;
-            markerCam.fieldOfView = 60f;
-            markerCam.clearFlags = CameraClearFlags.Depth;
-            markerCam.usePhysicalProperties = false;
-            markerCam.useOcclusionCulling = true;
-            markerCam.allowHDR = false;
-            markerCam.transform.SetParent(Camera.main.transform);
-            markerCam.transform.localPosition = Vector3.zero;
-            markerCam.transform.localRotation = Quaternion.identity;
-        }
-
-        protected void OnLoadedScene(GameScenes loadedScene)
-        {
-            if (loadedScene == GameScenes.FLIGHT) SpawnMarkerCamera();
-            SetAppLauncherButtonVisibility();
-        }
+        protected void OnLoadedScene(GameScenes loadedScene) => SetAppLauncherButtonVisibility();
 
         protected class InventoryDisplayItem
         {
