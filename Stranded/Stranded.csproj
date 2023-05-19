@@ -36,47 +36,57 @@
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <PropertyGroup>
-      <PostBuildEvent>cp Stranded.* "$(KSPDIR)/GameData/Stranded/"
+      <PostBuildEvent>cp * "$(KSPDIR)/GameData/Stranded/"
 </PostBuildEvent>
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="0Harmony">
           <HintPath>..\..\..\Library\Application Support\Steam\steamapps\common\Kerbal Space Program\GameData\000_Harmony\0Harmony.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="Assembly-CSharp">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="Assembly-CSharp-firstpass">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Xml" />
         <Reference Include="UnityEngine">
             <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.dll</HintPath>
+            <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.AssetBundleModule">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.CoreModule">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.InputLegacyModule">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.InputModule">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.InputModule.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.PhysicsModule">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+          <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.UI">
           <HintPath>$(KSPDIR)\KSP_x64_Data\Managed\UnityEngine.UI.dll</HintPath>
+          <Private>False</Private>
         </Reference>
     </ItemGroup>
     <ItemGroup>
         <Compile Include="MechBill\MechBill.cs" />
-        <Compile Include="MechBill\MechBillConstructionModeController.cs" />
+        <Compile Include="MechBill\MechBillConstructionModeControllerLoader.cs" />
         <Compile Include="MechBill\MechBillLoader.cs" />
         <Compile Include="Stranded.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
