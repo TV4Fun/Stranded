@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
@@ -35,9 +36,6 @@ namespace Stranded.MechBill
         private static readonly FieldInfo _displayedInventoryModule = InventoryDisplayItem.GetField("inventoryModule");
         private static readonly FieldInfo _displayedInventoryUIObject = InventoryDisplayItem.GetField("uiObject");
         private static readonly FieldInfo _displayedInventoryUIInventory = InventoryDisplayItem.GetField("uiInventory");
-
-        private static readonly MethodInfo _listInventoryDisplay_Add =
-            typeof(List<>).MakeGenericType(InventoryDisplayItem).GetMethod("Add");
 
         [UsedImplicitly]
         [HarmonyPrefix]
@@ -141,8 +139,7 @@ namespace Stranded.MechBill
                         uiInventory.SetupConstruction(moduleInventoryPart);
                 }
 
-                object displayedInventories = _displayedInventories.GetValue(instance);
-                _listInventoryDisplay_Add.Invoke(displayedInventories, new[] { displayItem });
+                ((IList)_displayedInventories.GetValue(instance)).Add(displayItem);
             }
         }
 
