@@ -87,6 +87,7 @@
     <ItemGroup>
         <Compile Include="MechBill\MechBill.cs" />
         <Compile Include="MechBill\MechBillConstructionModeControllerLoader.cs" />
+        <Compile Include="MechBill\MechBillController.cs" />
         <Compile Include="MechBill\MechBillLoader.cs" />
         <Compile Include="Stranded.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
