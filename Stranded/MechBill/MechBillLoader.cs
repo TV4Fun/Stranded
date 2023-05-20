@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Stranded.MechBill
 {
     [HarmonyPatch(typeof(PartLoader), nameof(PartLoader.StartLoad))]
-    public class MechBillLoader
+    public static class MechBillLoader
     {
         [UsedImplicitly]
         static bool Prefix(PartLoader __instance)
@@ -20,14 +20,13 @@ namespace Stranded.MechBill
                     part.partPrefab.gameObject.SetActive(false);
                     MechBill eva = part.partPrefab.gameObject.AddComponent<MechBill>();
                     FieldInfo[] sourceFields =
-                        typeof(KerbalEVA).GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+                        typeof(KerbalEVA).GetFields(
+                            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 
-                    foreach (FieldInfo field in sourceFields)
-                    {
-                        field.SetValue(eva, field.GetValue(oldEva));
-                    }
+                    foreach (FieldInfo field in sourceFields) { field.SetValue(eva, field.GetValue(oldEva)); }
 
-                    FieldInfo kerbalEvaField = typeof(LadderEndCheck).GetField("kerbalEVA", BindingFlags.NonPublic | BindingFlags.Instance);
+                    FieldInfo kerbalEvaField =
+                        typeof(LadderEndCheck).GetField("kerbalEVA", BindingFlags.NonPublic | BindingFlags.Instance);
                     kerbalEvaField.SetValue(eva.bottomLadderEnd, eva);
                     kerbalEvaField.SetValue(eva.topLadderEnd, eva);
                     Object.DestroyImmediate(oldEva);
@@ -38,5 +37,16 @@ namespace Stranded.MechBill
 
             return true;
         }
+
+        /*[UsedImplicitly]
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(UICanvasPrefabSpawner), "Awake")]
+        static bool UICanvasPrefabSpawnerPrefix(UICanvasPrefabSpawner __instance)
+        {
+            MechBillConstructionModeController controller = __instance.prefabs[0].prefab.transform.Find("Canvas")
+                .gameObject.AddComponent<MechBillConstructionModeController>();
+            controller.AssistingKerbalsLabel = 
+            return true;
+        }*/
     }
 }

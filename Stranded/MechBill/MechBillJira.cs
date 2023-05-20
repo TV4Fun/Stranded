@@ -2,7 +2,7 @@ using KSP.UI.Screens;
 
 namespace Stranded.MechBill
 {
-    public class MechBillController : VesselModule
+    public class MechBillJira : VesselModule
     {
         protected override void OnStart()
         {

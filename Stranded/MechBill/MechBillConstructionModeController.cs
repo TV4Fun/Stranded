@@ -10,7 +10,7 @@ using Object = UnityEngine.Object;
 namespace Stranded.MechBill
 {
     [HarmonyPatch(typeof(EVAConstructionModeController))]
-    public static class MechBillConstructionModeControllerLoader
+    public static class MechBillConstructionModeController
     {
         private static readonly FieldInfo _loadedModuleInventoryPart = typeof(EVAConstructionModeController)
             .GetField("loadedModuleInventoryPart", BindingFlags.NonPublic | BindingFlags.Instance);
