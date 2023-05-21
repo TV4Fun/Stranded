@@ -1,69 +1,68 @@
 using JetBrains.Annotations;
 using UnityEngine;
 
-namespace Stranded.MechBill
-{
-    public class MechBill : KerbalEVA
-    {
-        public FlightCtrlState ctrlState = new();
-        public delegate void ControlCallback(MechBill eva);
+namespace Stranded.MechBill {
+  public class MechBill : KerbalEVA {
+    public delegate void ControlCallback(MechBill eva);
 
-        public ControlCallback OnWalkByWire = eva => { };
+    [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control Linear", isPersistant = false)]
+    public Vector3 ctrlLinear;
 
-        public FlightInputCallback OnFlyByWire = st => { };
+    [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control PYR", isPersistant = false)]
+    public Vector3 ctrlPyr;
 
-        [UsedImplicitly]
-        [KSPField(guiActive = true, guiName = "Control Linear", isPersistant = false)]
-        public Vector3 ctrlLinear;
+    public FlightCtrlState CtrlState = new();
 
-        [UsedImplicitly]
-        [KSPField(guiActive = true, guiName = "Control PYR", isPersistant = false)]
-        public Vector3 ctrlPYR;
+    public FlightInputCallback OnFlyByWire = st => { };
 
-        protected override void HandleMovementInput()
-        {
-            base.HandleMovementInput();
-            OnWalkByWire(this);
-            Quaternion localToWorld = transform.rotation;
-            Quaternion worldToLocal = localToWorld.Inverse();
-            
-            Vector3 xyz = worldToLocal * packTgtRPos;
-            ctrlState.X = xyz.x;
-            ctrlState.Y = xyz.y;
-            ctrlState.Z = xyz.z;
+    public ControlCallback OnWalkByWire = eva => { };
 
-            Vector3 pyr = worldToLocal * cmdRot;
-            ctrlState.pitch = pyr.x;
-            ctrlState.yaw = pyr.y;
-            ctrlState.roll = pyr.z;
-            
-            OnFlyByWire(ctrlState);
+    protected override void HandleMovementInput() {
+      base.HandleMovementInput();
+      OnWalkByWire(this);
+      Quaternion localToWorld = transform.rotation;
+      Quaternion worldToLocal = localToWorld.Inverse();
 
-            xyz = ctrlState.GetXYZ();
-            pyr = new Vector3(ctrlState.pitch, ctrlState.yaw, ctrlState.roll);  // For some reason, GetPYR() switches around y and z.
+      Vector3 xyz = worldToLocal * packTgtRPos;
+      CtrlState.X = xyz.x;
+      CtrlState.Y = xyz.y;
+      CtrlState.Z = xyz.z;
 
-            packTgtRPos = localToWorld * xyz;
-            
-            if (pyr != Vector3.zero)
-            {
-                manualAxisControl = true;
-                cmdRot = localToWorld * pyr;
-            }
-            else manualAxisControl = false;
+      Vector3 pyr = worldToLocal * cmdRot;
+      CtrlState.pitch = pyr.x;
+      CtrlState.yaw = pyr.y;
+      CtrlState.roll = pyr.z;
 
-            ctrlLinear = xyz;
-            ctrlPYR = pyr;
-        }
+      OnFlyByWire(CtrlState);
 
-        public void SetPackWaypoint(Vector3 tgtPos)
-        {
-            packTgtRPos = (tgtPos - transform.position).normalized;
-        }
+      xyz = CtrlState.GetXYZ();
+      pyr = new Vector3(CtrlState.pitch, CtrlState.yaw,
+          CtrlState.roll); // For some reason, GetPYR() switches around y and z.
 
-        public override void OnAwake()
-        {
-            ModuleAttributes.classID = "KerbalEVA".GetHashCode();
-            base.OnAwake();
-        }
+      packTgtRPos = localToWorld * xyz;
+
+      if (pyr != Vector3.zero) {
+        manualAxisControl = true;
+        cmdRot = localToWorld * pyr;
+      } else {
+        manualAxisControl = false;
+      }
+
+      ctrlLinear = xyz;
+      ctrlPyr = pyr;
     }
+
+    public void SetPackWaypoint(Vector3 tgtPos) {
+      packTgtRPos = (tgtPos - transform.position).normalized;
+    }
+
+    public override void OnAwake() {
+      ModuleAttributes.classID = "KerbalEVA".GetHashCode();
+      base.OnAwake();
+    }
+
+    public void MoveToPart(Part targetPart) {
+      //targetPart.vel
+    }
+  }
 }
