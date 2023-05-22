@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Highlighting;
 using KSP.UI.Screens;
@@ -7,7 +8,7 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
-    private readonly Queue<Task> _backlog = new();
+    private Queue<AttachmentTask> _backlog = new();
 
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
@@ -26,26 +27,33 @@ namespace Stranded.MechBill {
       }
     }
 
-    private void Update() {
-
-    }
-
     public Part AttachPart(Attachment attachment) {
       if (attachment == null || attachment.PotentialParent == null) return null;
+      Part ghostPart = attachment.CreateGhostPart();
+      AttachmentTask task = (AttachmentTask)ghostPart.AddModule(nameof(AttachmentTask));
+      task.enabled = true;
+      task.Attachment = attachment;
+      task.Board = this;
 
-      _backlog.Enqueue(new Task(attachment));
+      _backlog.Enqueue(task);
 
-      return attachment.CreateGhostPart();
+      return ghostPart;
+    }
+
+    public void CancelTask(AttachmentTask task) {
+      _backlog = new Queue<AttachmentTask>(_backlog.Where(x => x != task));
+      Destroy(task.gameObject);
     }
 
 
-    public struct Task {
+    public class AttachmentTask : PartModule {
       // public Part Part;
       public Attachment Attachment;
+      public MechBillJira Board;
 
-      public Task(Attachment attachment) {
-        // Part = part;
-        Attachment = attachment;
+      [KSPEvent(guiActive = true, guiName = "Cancel")]
+      public void Cancel() {
+        Board.CancelTask(this);
       }
     }
 
@@ -130,11 +138,11 @@ namespace Stranded.MechBill {
         ghostPart.SetHighlightColor(Highlighter.colorPartHighlightDefault);
         ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
         ghostPart.SetHighlight(true, true);
-        //ghostPart.gameObject.SetLayerRecursive(13, true, 1 << 21);
+        ghostPart.gameObject.SetLayerRecursive(13, true, 1 << 21);
         ghostPart.SetOpacity(0.5f);
         EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor
             .attachClip);
-        //ghostPart.DemoteToPhysicslessPart();
+        ghostPart.DemoteToPhysicslessPart();
         /*if (newPart.isCompund)
         {
           EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
