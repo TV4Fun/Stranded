@@ -91,16 +91,11 @@ namespace Stranded.MechBill {
       }
 
       public Part CreateGhostPart() {
-        //Part ghostPart = Caller.protoPartSnapshot.CreatePart();
-        Part ghostPart = UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
+        Part ghostPart = Caller; // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
         ghostPart.isAttached = true;
-        ghostPart.partInfo = Caller.partInfo;
-
-        Transform callerTransform = Caller.transform;
         Transform ghostPartTransform = ghostPart.transform;
-        ghostPartTransform.rotation = callerTransform.rotation;
-        ghostPartTransform.position = callerTransform.position;
-        Destroy(Caller.gameObject);
+
+        //Destroy(Caller.gameObject);
         /*if (UIPartActionControllerInventory.Instance != null)
         {
           UIPartActionControllerInventory.Instance.DestroyHeldPartAsIcon();
@@ -124,8 +119,8 @@ namespace Stranded.MechBill {
           OtherPartNode.attachedPart = ghostPart;
         }
 
-        ghostPart.attPos0 = callerTransform.localPosition;
-        ghostPart.attRotation0 = callerTransform.localRotation;
+        ghostPart.attPos0 = ghostPartTransform.localPosition;
+        ghostPart.attRotation0 = ghostPartTransform.localRotation;
         // ghostPart.OnAttachFlight(attachment.PotentialParent);  // TODO: Try replacing this with OnAttach
         if (Mode == AttachModes.SRF_ATTACH) {
           ghostPart.attachMode = AttachModes.SRF_ATTACH;
@@ -134,12 +129,12 @@ namespace Stranded.MechBill {
 
         ghostPart.SetHighlightColor(Highlighter.colorPartHighlightDefault);
         ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
-        //ghostPart.SetHighlight(true, true);
-        ghostPart.gameObject.SetLayerRecursive(13, true, 1 << 21);
+        ghostPart.SetHighlight(true, true);
+        //ghostPart.gameObject.SetLayerRecursive(13, true, 1 << 21);
         ghostPart.SetOpacity(0.5f);
         EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor
             .attachClip);
-        ghostPart.DemoteToPhysicslessPart();
+        //ghostPart.DemoteToPhysicslessPart();
         /*if (newPart.isCompund)
         {
           EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
