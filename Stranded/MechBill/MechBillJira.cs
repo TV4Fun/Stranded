@@ -9,6 +9,8 @@ using UnityEngine;
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
     private Queue<AttachmentTask> _backlog = new();
+    public const int GhostLayer = 3;
+    public static readonly Color GhostPartHighlightColor = new Color(0.0f, 1.0f, 1.0f, 0.5f);
 
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
@@ -16,6 +18,19 @@ namespace Stranded.MechBill {
 
     protected override void OnStart() {
       GameEvents.OnEVAConstructionMode.Add(OnEVAConstructionMode);
+      CameraManager.GetCurrentCamera().cullingMask |= 1 << GhostLayer;
+      Part.layerMask |= 1 << GhostLayer;
+      SetupCollisionIgnores();
+    }
+
+    private void Update() {
+
+    }
+
+    private static void SetupCollisionIgnores() {
+      for (int i = 0; i < 32; ++i) {
+        Physics.IgnoreLayerCollision(i, GhostLayer);
+      }
     }
 
     public void OnEVAConstructionMode(bool enabled) {
@@ -102,6 +117,7 @@ namespace Stranded.MechBill {
         Part ghostPart = Caller; // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
         ghostPart.isAttached = true;
         Transform ghostPartTransform = ghostPart.transform;
+        ghostPartTransform.parent = PotentialParent.transform;
 
         //Destroy(Caller.gameObject);
         /*if (UIPartActionControllerInventory.Instance != null)
@@ -129,16 +145,23 @@ namespace Stranded.MechBill {
 
         ghostPart.attPos0 = ghostPartTransform.localPosition;
         ghostPart.attRotation0 = ghostPartTransform.localRotation;
-        // ghostPart.OnAttachFlight(attachment.PotentialParent);  // TODO: Try replacing this with OnAttach
+
         if (Mode == AttachModes.SRF_ATTACH) {
           ghostPart.attachMode = AttachModes.SRF_ATTACH;
           ghostPart.srfAttachNode.attachedPart = PotentialParent;
         }
 
-        ghostPart.SetHighlightColor(Highlighter.colorPartHighlightDefault);
+        ghostPart.parent = PotentialParent;
+        ghostPart.vessel = PotentialParent.vessel;
+        // ghostPart.onPartAttach(PotentialParent);
+        ghostPart.vessel.Parts.Add(ghostPart);
+        PotentialParent.addChild(ghostPart);
+        ghostPart.sameVesselCollision = false;
+
+        ghostPart.SetHighlightColor(GhostPartHighlightColor);
         ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
-        ghostPart.SetHighlight(true, true);
-        ghostPart.gameObject.SetLayerRecursive(13, true, 1 << 21);
+        //ghostPart.SetHighlight(true, true);
+        ghostPart.gameObject.SetLayerRecursive(GhostLayer, true);
         ghostPart.SetOpacity(0.5f);
         EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor
             .attachClip);
