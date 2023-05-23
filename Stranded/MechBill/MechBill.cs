@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBill : KerbalEVA {
+    public MechBillJira.AttachmentTask assignedTask = null;
     public delegate void ControlCallback(MechBill eva);
 
     [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control Linear", isPersistant = false)]

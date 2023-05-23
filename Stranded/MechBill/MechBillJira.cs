@@ -2,15 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Highlighting;
+using FinePrint.Utilities;
 using KSP.UI.Screens;
 using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
     private Queue<AttachmentTask> _backlog = new();
+    private Stack<ProtoCrewMember> _availableEngineers;
+
     public const int GhostLayer = 3;
-    public static readonly Color GhostPartHighlightColor = new Color(0.0f, 1.0f, 1.0f, 0.5f);
+    public static readonly Color GhostPartHighlightColor = new Color(0.0f, 1.0f, 1.0f, 1.0f);
 
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
@@ -20,16 +22,24 @@ namespace Stranded.MechBill {
       GameEvents.OnEVAConstructionMode.Add(OnEVAConstructionMode);
       CameraManager.GetCurrentCamera().cullingMask |= 1 << GhostLayer;
       Part.layerMask |= 1 << GhostLayer;
+      RebuildAvailableEngineers();
+      GameEvents.onVesselCrewWasModified.Add(OnVesselCrewWasModified);
       SetupCollisionIgnores();
     }
 
     private void Update() {
-
+      AssignTasks();
     }
 
     private static void SetupCollisionIgnores() {
       for (int i = 0; i < 32; ++i) {
         Physics.IgnoreLayerCollision(i, GhostLayer);
+      }
+    }
+
+    private void OnVesselCrewWasModified(Vessel modifiedVessel) {
+      if (vessel == modifiedVessel) {
+        RebuildAvailableEngineers();
       }
     }
 
@@ -39,6 +49,21 @@ namespace Stranded.MechBill {
         InputLockManager.SetControlLock(ControlTypes.PARTIAL_SHIP_CONTROLS, nameof(MechBillJira));
       } else {
         InputLockManager.RemoveControlLock(nameof(MechBillJira));
+      }
+    }
+
+    private void RebuildAvailableEngineers() {
+      _availableEngineers = new Stack<ProtoCrewMember>(VesselUtilities.VesselCrewWithTrait("Engineer", vessel));
+    }
+
+    private void AssignTasks() {
+      if (_availableEngineers.Count > 0 && _backlog.Count > 0) {
+        ProtoCrewMember assignedEngineer = _availableEngineers.Pop();
+        AttachmentTask assignedTask = _backlog.Dequeue();
+
+        MechBill mechBill = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
+        FlightGlobalsOverrides.StopNextForcedVesselSwitch();
+        mechBill.assignedTask = assignedTask;
       }
     }
 
@@ -89,7 +114,7 @@ namespace Stranded.MechBill {
       private static readonly FieldInfo _rotation = _kspAttachment.GetField("rotation");
 
       public Part Caller; // Part to be attached
-      public Part PotentialParent;  // Part we attaching to
+      public Part PotentialParent; // Part we attaching to
       public AttachNode CallerPartNode; // Attachment point on the part to be attached
       public AttachNode OtherPartNode; // Attachment point on the part being attached to
 
@@ -114,7 +139,8 @@ namespace Stranded.MechBill {
       }
 
       public Part CreateGhostPart() {
-        Part ghostPart = Caller; // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
+        Part
+            ghostPart = Caller; // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
         ghostPart.isAttached = true;
         Transform ghostPartTransform = ghostPart.transform;
         ghostPartTransform.parent = PotentialParent.transform;
@@ -154,13 +180,13 @@ namespace Stranded.MechBill {
         ghostPart.parent = PotentialParent;
         ghostPart.vessel = PotentialParent.vessel;
         // ghostPart.onPartAttach(PotentialParent);
-        ghostPart.vessel.Parts.Add(ghostPart);
-        PotentialParent.addChild(ghostPart);
+        //ghostPart.vessel.Parts.Add(ghostPart);
+        //PotentialParent.addChild(ghostPart);
         ghostPart.sameVesselCollision = false;
 
         ghostPart.SetHighlightColor(GhostPartHighlightColor);
         ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
-        //ghostPart.SetHighlight(true, true);
+        ghostPart.SetHighlight(false, true);
         ghostPart.gameObject.SetLayerRecursive(GhostLayer, true);
         ghostPart.SetOpacity(0.5f);
         EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor

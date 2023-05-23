@@ -138,15 +138,20 @@ namespace Stranded.MechBill {
         return true;
       }
 
-      var loadedModuleInventoryParts =
+      Dictionary<uint, ModuleInventoryPart> loadedModuleInventoryParts =
           LoadedModuleInventoryParts(__instance);
-      foreach (var kv in loadedModuleInventoryParts) {
+      var deletedModuleInventoryParts = new List<uint>();
+      foreach (KeyValuePair<uint, ModuleInventoryPart> kv in loadedModuleInventoryParts) {
         ModuleInventoryPart moduleInventoryPart = kv.Value;
         if (moduleInventoryPart == null) {
-          loadedModuleInventoryParts.Remove(kv.Key);
+          deletedModuleInventoryParts.Add(kv.Key);
         } else {
           AddInventoryDisplay(__instance, moduleInventoryPart);
         }
+      }
+
+      foreach (uint key in deletedModuleInventoryParts) {
+        loadedModuleInventoryParts.Remove(key);
       }
 
       return false;
