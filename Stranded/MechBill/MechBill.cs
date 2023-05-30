@@ -78,10 +78,10 @@ namespace Stranded.MechBill {
     private void MoveToTarget() {
       Vector3 tgtRelativePosition = vessel.targetObject.GetTransform().position - transform.position;
       tgtFwd = tgtRelativePosition.normalized;
-      Vector3d tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
-      Vector3d goalVelocity;
+      Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
+      Vector3 goalVelocity;
       if (tgtRelativePosition.magnitude <= TgtApproachDistance) {
-        goalVelocity = Vector3d.zero;
+        goalVelocity = Vector3.zero;
       } else {
         goalVelocity = tgtFwd * ApproachSpeedLimit;
       }
@@ -92,7 +92,7 @@ namespace Stranded.MechBill {
                 part.orbit.GetVel() + "; Relative Velocity: " + tgtRelativeVelocity + "; Goal Velocity: " +
                 goalVelocity);*/
 
-      Vector3d velError = (goalVelocity - tgtRelativeVelocity); //.xzy;
+      Vector3 velError = goalVelocity - tgtRelativeVelocity;
       if (velError.magnitude > 1.0f) {
         velError.Normalize();
       }
