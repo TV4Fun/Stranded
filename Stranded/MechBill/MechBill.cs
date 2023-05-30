@@ -86,11 +86,11 @@ namespace Stranded.MechBill {
         goalVelocity = tgtFwd * ApproachSpeedLimit;
       }
 
-      Debug.Log("Target Position: " + vessel.targetObject.GetTransform().position + "; Vessel Position: " +
+      /*Debug.Log("Target Position: " + vessel.targetObject.GetTransform().position + "; Vessel Position: " +
                 transform.position + "; Relative Position: " + tgtRelativePosition);
       Debug.Log("Target Velocity: " + vessel.targetObject.GetObtVelocity() + "; Vessel Velocity: " +
                 part.orbit.GetVel() + "; Relative Velocity: " + tgtRelativeVelocity + "; Goal Velocity: " +
-                goalVelocity);
+                goalVelocity);*/
 
       Vector3d velError = (goalVelocity - tgtRelativeVelocity); //.xzy;
       if (velError.magnitude > 1.0f) {
