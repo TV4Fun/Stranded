@@ -88,6 +88,7 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="MechBill\AttachmentTask.cs" />
         <Compile Include="MechBill\FlightGlobalsOverrides.cs" />
         <Compile Include="MechBill\MechBill.cs" />
         <Compile Include="MechBill\MechBillConstructionModeController.cs" />

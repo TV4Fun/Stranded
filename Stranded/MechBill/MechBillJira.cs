@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
+    [SerializeField]
     private Queue<AttachmentTask> _backlog = new();
     private Stack<ProtoCrewMember> _availableEngineers;
 
@@ -63,7 +64,7 @@ namespace Stranded.MechBill {
 
         MechBill mechBill = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
         FlightGlobalsOverrides.StopNextForcedVesselSwitch();
-        mechBill.assignedTask = assignedTask;
+        mechBill.AssignedTask = assignedTask;
       }
     }
 
@@ -72,7 +73,7 @@ namespace Stranded.MechBill {
       Part ghostPart = attachment.CreateGhostPart();
       AttachmentTask task = (AttachmentTask)ghostPart.AddModule(nameof(AttachmentTask));
       task.enabled = true;
-      task.Attachment = attachment;
+      task.SetAttachment(attachment);
       task.Board = this;
 
       _backlog.Enqueue(task);
@@ -85,17 +86,6 @@ namespace Stranded.MechBill {
       Destroy(task.gameObject);
     }
 
-
-    public class AttachmentTask : PartModule {
-      // public Part Part;
-      public Attachment Attachment;
-      public MechBillJira Board;
-
-      [KSPEvent(guiActive = true, guiName = "Cancel")]
-      public void Cancel() {
-        Board.CancelTask(this);
-      }
-    }
 
     // Class describing how to attach a new part to an existing vessel.
     public class Attachment {
@@ -139,6 +129,13 @@ namespace Stranded.MechBill {
       }
 
       public Part CreateGhostPart() {
+        /*if (ghostPart == null) {
+          ghostPart = UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
+          GhostPart.attRotation0 = TgtRotation;
+          GhostPart.attPos0 = TgtPosition;
+          GhostPart.transform.rotation = this.attachment.rotation * this.selectedPart.attRotation;
+          this.selectedPart.transform.position = this.attachment.position;
+        }*/
         Part
             ghostPart = Caller; // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
         ghostPart.isAttached = true;

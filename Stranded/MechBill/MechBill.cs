@@ -3,7 +3,16 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBill : KerbalEVA {
-    public MechBillJira.AttachmentTask assignedTask = null;
+    private AttachmentTask _assignedTask = null;
+
+    public AttachmentTask AssignedTask {
+      get => _assignedTask;
+      set {
+        vessel.targetObject = value;
+        _assignedTask = value;
+      }
+    }
+
     public delegate void ControlCallback(MechBill eva);
 
     [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control Linear", isPersistant = false)]
@@ -18,7 +27,16 @@ namespace Stranded.MechBill {
 
     public ControlCallback OnWalkByWire = eva => { };
 
+    public float ApproachSpeedLimit = 1.0f;
+    public float TgtApproachDistance = 0.5f;
+
     protected override void HandleMovementInput() {
+      if (AssignedTask != null) {
+        // Ignore player input if this Kerbal is AI controlled
+        ExecuteTask();
+        return;
+      }
+
       base.HandleMovementInput();
       OnWalkByWire(this);
       Quaternion localToWorld = transform.rotation;
@@ -55,6 +73,47 @@ namespace Stranded.MechBill {
 
     public void SetPackWaypoint(Vector3 tgtPos) {
       packTgtRPos = (tgtPos - transform.position).normalized;
+    }
+
+    private void MoveToTarget() {
+      Vector3 tgtRelativePosition = vessel.targetObject.GetTransform().position - transform.position;
+      tgtFwd = tgtRelativePosition.normalized;
+      Vector3d tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
+      Vector3d goalVelocity;
+      if (tgtRelativePosition.magnitude <= TgtApproachDistance) {
+        goalVelocity = Vector3d.zero;
+      } else {
+        goalVelocity = tgtFwd * ApproachSpeedLimit;
+      }
+
+      Debug.Log("Target Position: " + vessel.targetObject.GetTransform().position + "; Vessel Position: " +
+                transform.position + "; Relative Position: " + tgtRelativePosition);
+      Debug.Log("Target Velocity: " + vessel.targetObject.GetObtVelocity() + "; Vessel Velocity: " +
+                part.orbit.GetVel() + "; Relative Velocity: " + tgtRelativeVelocity + "; Goal Velocity: " +
+                goalVelocity);
+
+      Vector3d velError = (goalVelocity - tgtRelativeVelocity); //.xzy;
+      if (velError.magnitude > 1.0f) {
+        velError.Normalize();
+      }
+
+      packTgtRPos = velError;
+    }
+
+    private void ExecuteTask() {
+      if (OnALadder) {
+        fsm.RunEvent(On_ladderLetGo);
+      }
+
+      if (!JetpackDeployed) {
+        ToggleJetpack(true);
+      }
+
+      if (vessel.targetObject == null) {
+        vessel.targetObject = _assignedTask;
+      }
+
+      MoveToTarget();
     }
 
     public override void OnAwake() {
