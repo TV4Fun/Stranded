@@ -96,7 +96,7 @@ namespace Stranded.MechBill {
 
     private void MoveToTarget() {
       _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
-          vessel.targetObject.GetTransform().position, 2.5f);
+          vessel.targetObject.GetTransform().position, TgtApproachDistance);
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
       Vector3 goalVelocity;
 

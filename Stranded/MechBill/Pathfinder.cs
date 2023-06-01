@@ -57,14 +57,16 @@ namespace Stranded.MechBill {
       int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / Transform.lossyScale.x));
 
       var cameFrom = new Dictionary<ValueTuple<int, int, int>, ValueTuple<int, int, int>>();
-      var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
-      var openSet = new HeapDict<ValueTuple<int, int, int>, float>
-          { { (startPoint.x, startPoint.y, startPoint.z), 0.0f } };
+      //var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
+      bool[,,] visited = new bool[_gridSize, _gridSize, _gridSize];
+      visited[startPoint.x, startPoint.y, startPoint.z] = true;
+      var openSet = new PriorityQueue<ValueTuple<int, int, int>, float>();
+      openSet.Add((startPoint.x, startPoint.y, startPoint.z), 0.0f);
 
       float[] sqrts = { 1.0f, Mathf.Sqrt(2.0f), Mathf.Sqrt(3.0f) };
 
-      while (openSet.Count > 0) {
-        HeapDict<(int, int, int), float>.MutableKeyValuePair nextNode = openSet.Dequeue();
+      while (!openSet.IsEmpty()) {
+        PriorityQueue<(int, int, int), float>.MutableKeyValuePair nextNode = openSet.Dequeue();
         ValueTuple<int, int, int> otherPoint;
         for (otherPoint.Item1 = nextNode.Key.Item1 - 1;
              otherPoint.Item1 <= nextNode.Key.Item1 + 1;
@@ -76,7 +78,7 @@ namespace Stranded.MechBill {
                  otherPoint.Item3 <= nextNode.Key.Item3 + 1;
                  ++otherPoint.Item3) {
               if (InBounds(otherPoint) && !_isObstructed[otherPoint.Item1, otherPoint.Item2, otherPoint.Item3] &&
-                  otherPoint != nextNode.Key && !visited.Contains(otherPoint)) {
+                  !visited[otherPoint.Item1, otherPoint.Item2, otherPoint.Item3]) {
                 cameFrom[otherPoint] = nextNode.Key;
                 int intDistance = Math.Abs(otherPoint.Item1 - nextNode.Key.Item1) +
                                   Math.Abs(otherPoint.Item2 - nextNode.Key.Item2) +
@@ -96,8 +98,8 @@ namespace Stranded.MechBill {
                   return result;
                 }
 
-                openSet[otherPoint] = nextNode.Value + distance;
-                visited.Add(otherPoint);
+                openSet.Add(otherPoint, nextNode.Value + distance);
+                visited[otherPoint.Item1, otherPoint.Item2, otherPoint.Item3] = true;
               }
             }
           }
