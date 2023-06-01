@@ -50,6 +50,10 @@ namespace Stranded.MechBill {
             "Point is outside of grid. Grid coords " + endPoint + " valid values are 0.." + (_gridSize - 1));
       }
 
+      int endX = endPoint.x;
+      int endY = endPoint.y;
+      int endZ = endPoint.z;
+
       int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / Transform.lossyScale.x));
 
       var cameFrom = new Dictionary<ValueTuple<int, int, int>, ValueTuple<int, int, int>>();
@@ -78,9 +82,9 @@ namespace Stranded.MechBill {
                                   Math.Abs(otherPoint.Item2 - nextNode.Key.Item2) +
                                   Math.Abs(otherPoint.Item3 - nextNode.Key.Item3);
                 float distance = sqrts[intDistance - 1];
-                int endDistance = Sqr(otherPoint.Item1 - nextNode.Key.Item1) +
-                                  Sqr(otherPoint.Item2 - nextNode.Key.Item2) +
-                                  Sqr(otherPoint.Item3 - nextNode.Key.Item3);
+                int endDistance = Sqr(otherPoint.Item1 - endX) +
+                                  Sqr(otherPoint.Item2 - endY) +
+                                  Sqr(otherPoint.Item3 - endZ);
                 if (endDistance <= sqrRadius) {
                   List<Vector3> result = new();
                   bool hasNext;
