@@ -8,9 +8,10 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
-    [SerializeField]
-    private Queue<AttachmentTask> _backlog = new();
+    [SerializeField] private Queue<AttachmentTask> _backlog = new();
     private Stack<ProtoCrewMember> _availableEngineers;
+
+    public Pathfinder Pathfinder = new();
 
     public const int GhostLayer = 3;
     public static readonly Color GhostPartHighlightColor = new Color(0.0f, 1.0f, 1.0f, 1.0f);
@@ -30,6 +31,7 @@ namespace Stranded.MechBill {
 
     private void Update() {
       AssignTasks();
+      Pathfinder.Transform = transform;
     }
 
     private static void SetupCollisionIgnores() {

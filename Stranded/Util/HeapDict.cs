@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Stranded.Util {
   public class HeapDict<TKey, TValue> : Dictionary<TKey, TValue> where TValue : IComparable<TValue> {
-    private class MutableKeyValuePair<TKey, TValue> {
+    public class MutableKeyValuePair {
       public readonly TKey Key;
       public TValue Value;
 
@@ -13,7 +13,7 @@ namespace Stranded.Util {
       }
     }
 
-    private List<MutableKeyValuePair<TKey, TValue>> _heap = new();
+    private List<MutableKeyValuePair> _heap = new();
     private Dictionary<TKey, int> _indices = new();
 
     void UpdateIndex(int index) {
@@ -40,8 +40,8 @@ namespace Stranded.Util {
 
     private void DownHeapify(int index, TValue value) {
       while (true) {
-        int child1 = index << 1 + 1;
-        int child2 = index << 1 + 2;
+        int child1 = (index << 1) + 1;
+        int child2 = (index << 1) + 2;
         if (child1 >= _heap.Count) {
           return;
         }
@@ -57,8 +57,8 @@ namespace Stranded.Util {
           return;
         }
 
-        SwapIndices(index, child2);
-        index = child2;
+        SwapIndices(index, child);
+        index = child;
       }
     }
 
@@ -94,7 +94,7 @@ namespace Stranded.Util {
     public new void Add(TKey key, TValue value) {
       base.Add(key, value);
       int index = _heap.Count;
-      _heap.Add(new MutableKeyValuePair<TKey, TValue>(key, value));
+      _heap.Add(new MutableKeyValuePair(key, value));
       _indices.Add(key, index);
       UpHeapify(index, value);
     }
@@ -115,24 +115,28 @@ namespace Stranded.Util {
       _indices.Remove(key);
       _heap[index] = _heap[_heap.Count - 1];
       _heap.RemoveAt(_heap.Count - 1);
-      UpdateIndex(index);
-
-      TValue newValue = _heap[index].Value;
-      if (newValue.CompareTo(oldValue) > 0) {
-        DownHeapify(index, newValue);
+      if (_heap.Count > index) {
+        UpdateIndex(index);
+        TValue newValue = _heap[index].Value;
+        if (newValue.CompareTo(oldValue) > 0) {
+          DownHeapify(index, newValue);
+        }
       }
 
       return true;
     }
 
-    public TKey Dequeue() {
-      TKey nextItem = _heap[0].Key;
+    public MutableKeyValuePair Dequeue() {
+      MutableKeyValuePair nextItem = _heap[0];
       _heap[0] = _heap[_heap.Count - 1];
       _heap.RemoveAt(_heap.Count - 1);
-      UpdateIndex(0);
-      _indices.Remove(nextItem);
-      base.Remove(nextItem);
-      DownHeapify(0);
+      _indices.Remove(nextItem.Key);
+      base.Remove(nextItem.Key);
+      if (_heap.Count > 0) {
+        UpdateIndex(0);
+        DownHeapify(0);
+      }
+
       return nextItem;
     }
 
@@ -146,7 +150,7 @@ namespace Stranded.Util {
 
     public TKey DequeueEnqueue(TKey key, TValue value) {
       TKey nextItem = _heap[0].Key;
-      _heap[0] = new MutableKeyValuePair<TKey, TValue>(key, value);
+      _heap[0] = new MutableKeyValuePair(key, value);
       UpdateIndex(0);
       _indices.Remove(nextItem);
       base.Remove(nextItem);

@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBill : KerbalEVA {
     private AttachmentTask _assignedTask = null;
+    private List<Vector3> _pathToTarget = null;
 
     public AttachmentTask AssignedTask {
       get => _assignedTask;
@@ -75,15 +77,35 @@ namespace Stranded.MechBill {
       packTgtRPos = (tgtPos - transform.position).normalized;
     }
 
+    private bool GetNextPathPoint(out Vector3 nextPoint) {
+      nextPoint = Vector3.zero;
+      if (_pathToTarget == null) {
+        return false;
+      }
+
+      while (_pathToTarget.Count > 0) {
+        nextPoint = _pathToTarget[_pathToTarget.Count - 1];
+        if ((nextPoint - transform.position).magnitude > TgtApproachDistance) {
+          return true;
+        }
+        _pathToTarget.RemoveAt(_pathToTarget.Count - 1);
+      }
+
+      return false;
+    }
+
     private void MoveToTarget() {
-      Vector3 tgtRelativePosition = vessel.targetObject.GetTransform().position - transform.position;
-      tgtFwd = tgtRelativePosition.normalized;
+      _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
+          vessel.targetObject.GetTransform().position, 2.5f);
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
       Vector3 goalVelocity;
-      if (tgtRelativePosition.magnitude <= TgtApproachDistance) {
-        goalVelocity = Vector3.zero;
-      } else {
+
+      if (GetNextPathPoint(out Vector3 nextPoint)) {
+        Vector3 tgtRelativePosition = nextPoint - transform.position;
+        tgtFwd = tgtRelativePosition.normalized;
         goalVelocity = tgtFwd * ApproachSpeedLimit;
+      } else {
+        goalVelocity = Vector3.zero;
       }
 
       /*Debug.Log("Target Position: " + vessel.targetObject.GetTransform().position + "; Vessel Position: " +
@@ -93,7 +115,7 @@ namespace Stranded.MechBill {
                 goalVelocity);*/
 
       Vector3 velError = goalVelocity - tgtRelativeVelocity;
-      if (velError.magnitude > 1.0f) {
+      if (velError.sqrMagnitude > 1.0f) {
         velError.Normalize();
       }
 
