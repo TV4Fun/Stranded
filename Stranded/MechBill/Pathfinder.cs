@@ -29,6 +29,10 @@ namespace Stranded.MechBill {
       }
     }
 
+    private int Sqr(int x) => x * x;
+
+    private float Sqr(float x) => x * x;
+
     public List<Vector3> FindPath(Vector3 start, Vector3 end, float radius) {
       if (_gridNeedsRebuild) {
         RebuildCollisionGrid();
@@ -46,34 +50,49 @@ namespace Stranded.MechBill {
             "Point is outside of grid. Grid coords " + endPoint + " valid values are 0.." + (_gridSize - 1));
       }
 
-      float sqrRadius = Mathf.FloorToInt(radius * radius / (_gridElementSize * _gridElementSize));
+      int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / Transform.lossyScale.x));
 
-      var cameFrom = new Dictionary<Vector3Int, Vector3Int>();
-      var visited = new HashSet<Vector3Int> { startPoint };
-      var openSet = new HeapDict<Vector3Int, float> { { startPoint, 0.0f } };
+      var cameFrom = new Dictionary<ValueTuple<int, int, int>, ValueTuple<int, int, int>>();
+      var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
+      var openSet = new HeapDict<ValueTuple<int, int, int>, float>
+          { { (startPoint.x, startPoint.y, startPoint.z), 0.0f } };
+
+      float[] sqrts = { 1.0f, Mathf.Sqrt(2.0f), Mathf.Sqrt(3.0f) };
 
       while (openSet.Count > 0) {
-        HeapDict<Vector3Int, float>.MutableKeyValuePair nextNode = openSet.Dequeue();
-        Vector3Int delta = new();
-        for (delta.x = -1; delta.x <= 1; ++delta.x) {
-          for (delta.y = -1; delta.y <= 1; ++delta.y) {
-            for (delta.z = -1; delta.z <= 1; ++delta.z) {
-              Vector3Int otherPoint = nextNode.Key + delta;
-              if (InBounds(otherPoint) && !_isObstructed[otherPoint.x, otherPoint.y, otherPoint.z] &&
-                  !visited.Contains(otherPoint)) {
+        HeapDict<(int, int, int), float>.MutableKeyValuePair nextNode = openSet.Dequeue();
+        ValueTuple<int, int, int> otherPoint;
+        for (otherPoint.Item1 = nextNode.Key.Item1 - 1;
+             otherPoint.Item1 <= nextNode.Key.Item1 + 1;
+             ++otherPoint.Item1) {
+          for (otherPoint.Item2 = nextNode.Key.Item2 - 1;
+               otherPoint.Item2 <= nextNode.Key.Item2 + 1;
+               ++otherPoint.Item2) {
+            for (otherPoint.Item3 = nextNode.Key.Item3 - 1;
+                 otherPoint.Item3 <= nextNode.Key.Item3 + 1;
+                 ++otherPoint.Item3) {
+              if (InBounds(otherPoint) && !_isObstructed[otherPoint.Item1, otherPoint.Item2, otherPoint.Item3] &&
+                  otherPoint != nextNode.Key && !visited.Contains(otherPoint)) {
                 cameFrom[otherPoint] = nextNode.Key;
-                if ((otherPoint - endPoint).sqrMagnitude <= sqrRadius) {
+                int intDistance = Math.Abs(otherPoint.Item1 - nextNode.Key.Item1) +
+                                  Math.Abs(otherPoint.Item2 - nextNode.Key.Item2) +
+                                  Math.Abs(otherPoint.Item3 - nextNode.Key.Item3);
+                float distance = sqrts[intDistance - 1];
+                int endDistance = Sqr(otherPoint.Item1 - nextNode.Key.Item1) +
+                                  Sqr(otherPoint.Item2 - nextNode.Key.Item2) +
+                                  Sqr(otherPoint.Item3 - nextNode.Key.Item3);
+                if (endDistance <= sqrRadius) {
                   List<Vector3> result = new();
                   bool hasNext;
                   do {
-                    result.Add(GridToWorld(otherPoint));
+                    result.Add(GridToWorld(new Vector3Int(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3)));
                     hasNext = cameFrom.TryGetValue(otherPoint, out otherPoint);
                   } while (hasNext);
 
                   return result;
                 }
 
-                openSet[otherPoint] = nextNode.Value + delta.magnitude;
+                openSet[otherPoint] = nextNode.Value + distance;
                 visited.Add(otherPoint);
               }
             }
@@ -108,6 +127,11 @@ namespace Stranded.MechBill {
 
       return true;
     }
+
+    public bool InBounds(ValueTuple<int, int, int> point) =>
+        point.Item1 >= 0 && point.Item1 < _gridSize &&
+        point.Item2 >= 0 && point.Item2 < _gridSize &&
+        point.Item3 >= 0 && point.Item3 < _gridSize;
 
     public Vector3 GridToWorld(Vector3Int point) {
       return Transform.TransformPoint(_gridElementSize * (point - _gridSize * Vector3.one / 2.0f));

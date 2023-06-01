@@ -13,8 +13,8 @@ namespace Stranded.Util {
       }
     }
 
-    private List<MutableKeyValuePair> _heap = new();
-    private Dictionary<TKey, int> _indices = new();
+    private readonly List<MutableKeyValuePair> _heap = new();
+    private readonly Dictionary<TKey, int> _indices = new();
 
     void UpdateIndex(int index) {
       _indices[_heap[index].Key] = index;
