@@ -30,7 +30,7 @@ namespace Stranded.MechBill {
     public ControlCallback OnWalkByWire = eva => { };
 
     public float ApproachSpeedLimit = 1.0f;
-    public float TgtApproachDistance = 0.5f;
+    public float TgtApproachDistance = 1.0f;
 
     protected override void HandleMovementInput() {
       if (AssignedTask != null) {
@@ -99,13 +99,20 @@ namespace Stranded.MechBill {
           vessel.targetObject.GetTransform().position, 4.0f * TgtApproachDistance);
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
 
-      if (!GetNextPathPoint(out Vector3 nextPoint)) {
+      bool approachingTarget = !GetNextPathPoint(out Vector3 nextPoint);
+      if (approachingTarget) {
         nextPoint = vessel.targetObject.GetTransform().position;
       }
 
       Vector3 tgtRelativePosition = nextPoint - transform.position;
       tgtFwd = tgtRelativePosition.normalized;
-      Vector3 goalVelocity = tgtFwd * ApproachSpeedLimit;
+
+      Vector3 goalVelocity;
+      if (approachingTarget && (nextPoint - transform.position).magnitude <= TgtApproachDistance) {
+        goalVelocity = Vector3.zero;
+      } else {
+        goalVelocity = tgtFwd * ApproachSpeedLimit;
+      }
 
       /*Debug.Log("Target Position: " + vessel.targetObject.GetTransform().position + "; Vessel Position: " +
                 transform.position + "; Relative Position: " + tgtRelativePosition);
