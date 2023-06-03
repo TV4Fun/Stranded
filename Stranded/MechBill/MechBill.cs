@@ -96,24 +96,22 @@ namespace Stranded.MechBill {
 
     private void MoveToTarget() {
       _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
-          vessel.targetObject.GetTransform().position, TgtApproachDistance);
+          vessel.targetObject.GetTransform().position, 4.0f * TgtApproachDistance);
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
-      Vector3 goalVelocity;
 
-      if (GetNextPathPoint(out Vector3 nextPoint)) {
-        Vector3 tgtRelativePosition = nextPoint - transform.position;
-        tgtFwd = tgtRelativePosition.normalized;
-        goalVelocity = tgtFwd * ApproachSpeedLimit;
-      } else {
-        goalVelocity = Vector3.zero;
+      if (!GetNextPathPoint(out Vector3 nextPoint)) {
+        nextPoint = vessel.targetObject.GetTransform().position;
       }
+
+      Vector3 tgtRelativePosition = nextPoint - transform.position;
+      tgtFwd = tgtRelativePosition.normalized;
+      Vector3 goalVelocity = tgtFwd * ApproachSpeedLimit;
 
       /*Debug.Log("Target Position: " + vessel.targetObject.GetTransform().position + "; Vessel Position: " +
                 transform.position + "; Relative Position: " + tgtRelativePosition);
       Debug.Log("Target Velocity: " + vessel.targetObject.GetObtVelocity() + "; Vessel Velocity: " +
                 part.orbit.GetVel() + "; Relative Velocity: " + tgtRelativeVelocity + "; Goal Velocity: " +
                 goalVelocity);*/
-
       Vector3 velError = goalVelocity - tgtRelativeVelocity;
       if (velError.sqrMagnitude > 1.0f) {
         velError.Normalize();

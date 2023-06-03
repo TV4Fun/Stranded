@@ -13,17 +13,14 @@ namespace Stranded.MechBill {
 
     public Pathfinder Pathfinder = new();
 
-    public const int GhostLayer = 3;
-    public static readonly Color GhostPartHighlightColor = new Color(0.0f, 1.0f, 1.0f, 1.0f);
-
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
     }
 
     protected override void OnStart() {
       GameEvents.OnEVAConstructionMode.Add(OnEVAConstructionMode);
-      CameraManager.GetCurrentCamera().cullingMask |= 1 << GhostLayer;
-      Part.layerMask |= 1 << GhostLayer;
+      CameraManager.GetCurrentCamera().cullingMask |= 1 << Globals.GhostLayer;
+      Part.layerMask |= 1 << Globals.GhostLayer;
       RebuildAvailableEngineers();
       GameEvents.onVesselCrewWasModified.Add(OnVesselCrewWasModified);
       SetupCollisionIgnores();
@@ -36,7 +33,7 @@ namespace Stranded.MechBill {
 
     private static void SetupCollisionIgnores() {
       for (int i = 0; i < 32; ++i) {
-        Physics.IgnoreLayerCollision(i, GhostLayer);
+        Physics.IgnoreLayerCollision(i, Globals.GhostLayer);
       }
     }
 
@@ -72,15 +69,15 @@ namespace Stranded.MechBill {
 
     public Part AttachPart(Attachment attachment) {
       if (attachment == null || attachment.PotentialParent == null) return null;
-      Part ghostPart = attachment.CreateGhostPart();
-      AttachmentTask task = (AttachmentTask)ghostPart.AddModule(nameof(AttachmentTask));
-      task.enabled = true;
-      task.SetAttachment(attachment);
+      AttachmentTask task = AttachmentTask.Create(attachment);
       task.Board = this;
 
       _backlog.Enqueue(task);
 
-      return ghostPart;
+      //EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor
+      //    .attachClip);
+
+      return task.part;
     }
 
     public void CancelTask(AttachmentTask task) {
@@ -128,74 +125,6 @@ namespace Stranded.MechBill {
         OtherPartNode = (AttachNode)_otherPartNode.GetValue(attachment);
         Position = (Vector3)_position.GetValue(attachment);
         Rotation = (Quaternion)_rotation.GetValue(attachment);
-      }
-
-      public Part CreateGhostPart() {
-        /*if (ghostPart == null) {
-          ghostPart = UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
-          GhostPart.attRotation0 = TgtRotation;
-          GhostPart.attPos0 = TgtPosition;
-          GhostPart.transform.rotation = this.attachment.rotation * this.selectedPart.attRotation;
-          this.selectedPart.transform.position = this.attachment.position;
-        }*/
-        Part
-            ghostPart = Caller; // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
-        ghostPart.isAttached = true;
-        Transform ghostPartTransform = ghostPart.transform;
-        ghostPartTransform.parent = PotentialParent.transform;
-
-        //Destroy(Caller.gameObject);
-        /*if (UIPartActionControllerInventory.Instance != null)
-        {
-          UIPartActionControllerInventory.Instance.DestroyHeldPartAsIcon();
-        }*/
-
-        if (CallerPartNode != null) {
-          if (CallerPartNode.owner.persistentId == Caller.persistentId) {
-            AttachNode attachNode = ghostPart.FindAttachNode(CallerPartNode.id);
-            if (attachNode != null) {
-              attachNode.attachedPart = PotentialParent;
-            } else if (CallerPartNode.id == ghostPart.srfAttachNode.id) {
-              ghostPart.srfAttachNode.attachedPart = PotentialParent;
-              ghostPart.srfAttachNode.srfAttachMeshName = CallerPartNode.srfAttachMeshName;
-            }
-          } else {
-            CallerPartNode.attachedPart = PotentialParent;
-          }
-        }
-
-        if (OtherPartNode != null) {
-          OtherPartNode.attachedPart = ghostPart;
-        }
-
-        ghostPart.attPos0 = ghostPartTransform.localPosition;
-        ghostPart.attRotation0 = ghostPartTransform.localRotation;
-
-        if (Mode == AttachModes.SRF_ATTACH) {
-          ghostPart.attachMode = AttachModes.SRF_ATTACH;
-          ghostPart.srfAttachNode.attachedPart = PotentialParent;
-        }
-
-        ghostPart.parent = PotentialParent;
-        ghostPart.vessel = PotentialParent.vessel;
-        // ghostPart.onPartAttach(PotentialParent);
-        //ghostPart.vessel.Parts.Add(ghostPart);
-        //PotentialParent.addChild(ghostPart);
-        ghostPart.sameVesselCollision = false;
-
-        ghostPart.SetHighlightColor(GhostPartHighlightColor);
-        ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
-        ghostPart.SetHighlight(false, true);
-        ghostPart.gameObject.SetLayerRecursive(GhostLayer, true);
-        ghostPart.SetOpacity(0.5f);
-        EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor
-            .attachClip);
-        ghostPart.DemoteToPhysicslessPart();
-        /*if (newPart.isCompund)
-        {
-          EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
-        }*/
-        return ghostPart;
       }
     }
   }

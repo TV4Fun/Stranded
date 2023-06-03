@@ -1,9 +1,13 @@
+using System;
 using HarmonyLib;
 using JetBrains.Annotations;
 
 namespace Stranded.MechBill {
   [HarmonyPatch(typeof(EVAConstructionModeEditor))]
+  // ReSharper disable InconsistentNaming
   public static class MechBillConstructionModeEditor {
+    private class SoDoneWithThis : Exception { }
+
     private static VesselType _previousVesselType;
     private static float _previousEvaConstructionRange;
 
@@ -41,9 +45,15 @@ namespace Stranded.MechBill {
     }*/
 
     [UsedImplicitly]
+    [HarmonyFinalizer]
+    [HarmonyPatch("Update")]
+    public static Exception CatchDone(Exception __exception) {
+      return __exception is SoDoneWithThis ? null : __exception;
+    }
+
+    [UsedImplicitly]
     [HarmonyPrefix]
     [HarmonyPatch("AttachPart")]
-    // ReSharper disable once InconsistentNaming
     public static bool AttachPart(Part part, object attach, ref Part __result) {
       if (FlightGlobals.ActiveVessel == null || FlightGlobals.ActiveVessel.isEVA) {
         return true;
@@ -54,7 +64,18 @@ namespace Stranded.MechBill {
         __result = mechBillJira.AttachPart(new MechBillJira.Attachment(attach));
       }
 
-      return false;
+      if (UIPartActionControllerInventory.Instance != null) {
+        if (UIPartActionControllerInventory.Instance.CurrentInventorySlotClicked != null) {
+          UIPartActionControllerInventory.Instance.CurrentInventorySlotClicked.ReturnHeldPartToThisSlot();
+          // TODO: Make this grayed out and disappear when an engineer collects it.
+        }
+
+        /*if (UIPartActionControllerInventory.Instance.CurrentInventoryOnlyIcon != null) {
+          Object.Destroy(UIPartActionControllerInventory.Instance.CurrentInventoryOnlyIcon.gameObject);
+        }*/
+      }
+
+      throw new SoDoneWithThis();
     }
   }
 }

@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   [HarmonyPatch(typeof(PartLoader), nameof(PartLoader.StartLoad))]
+  // ReSharper disable InconsistentNaming
   public static class MechBillLoader {
     [UsedImplicitly]
     private static bool Prefix(PartLoader __instance) {
@@ -42,7 +43,7 @@ namespace Stranded.MechBill {
     {
         MechBillConstructionModeController controller = __instance.prefabs[0].prefab.transform.Find("Canvas")
             .gameObject.AddComponent<MechBillConstructionModeController>();
-        controller.AssistingKerbalsLabel = 
+        controller.AssistingKerbalsLabel =
         return true;
     }*/
   }

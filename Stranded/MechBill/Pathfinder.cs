@@ -13,6 +13,8 @@ namespace Stranded.MechBill {
 
     public Transform Transform;
 
+    // TODO: Subscribe to OnVesselStandardModification
+
     public float GridElementSize {
       get => _gridElementSize;
       set {

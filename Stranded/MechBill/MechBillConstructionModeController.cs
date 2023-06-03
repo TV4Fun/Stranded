@@ -9,6 +9,7 @@ using Object = UnityEngine.Object;
 
 namespace Stranded.MechBill {
   [HarmonyPatch(typeof(EVAConstructionModeController))]
+  // ReSharper disable InconsistentNaming
   public static class MechBillConstructionModeController {
     private static readonly FieldInfo _loadedModuleInventoryPart = typeof(EVAConstructionModeController)
         .GetField("loadedModuleInventoryPart", BindingFlags.NonPublic | BindingFlags.Instance);

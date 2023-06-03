@@ -91,6 +91,7 @@
     <ItemGroup>
         <Compile Include="MechBill\AttachmentTask.cs" />
         <Compile Include="MechBill\FlightGlobalsOverrides.cs" />
+        <Compile Include="MechBill\Globals.cs" />
         <Compile Include="MechBill\MechBill.cs" />
         <Compile Include="MechBill\MechBillConstructionModeController.cs" />
         <Compile Include="MechBill\MechBillConstructionModeEditor.cs" />
