@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Stranded.MechBill {
@@ -51,8 +52,9 @@ namespace Stranded.MechBill {
               .protoPartSnapshot); // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
       Transform ghostPartTransform = ghostPart.transform;
       ghostPart.attRotation0 = attachment.Rotation;
+      ghostPart.attRotation = attachment.Caller.attRotation;
       ghostPart.attPos0 = attachment.Position;
-      ghostPartTransform.rotation = attachment.Rotation * ghostPart.attRotation;
+      ghostPartTransform.rotation = attachment.Rotation * attachment.Caller.attRotation;
       ghostPartTransform.position = attachment.Position;
 
       ghostPart.isAttached = true;
@@ -86,16 +88,23 @@ namespace Stranded.MechBill {
 
       ghostPart.parent = attachment.PotentialParent;
       ghostPart.vessel = attachment.PotentialParent.vessel;
+      ghostPart.State = PartStates.DEACTIVATED;
+      ghostPart.ResumeState = PartStates.DEACTIVATED;
 
-      // ghostPart.onPartAttach(PotentialParent);
+      //ghostPart.OnAttachFlight(attachment.PotentialParent);
       //ghostPart.vessel.Parts.Add(ghostPart);
       //PotentialParent.addChild(ghostPart);
       ghostPart.sameVesselCollision = false;
 
+      ModuleCargoPart cargoPart = ghostPart.FindModuleImplementing<ModuleCargoPart>();
+      if (cargoPart != null) {
+        cargoPart.isEnabled = false;
+      }
+
+      ghostPart.gameObject.SetLayerRecursive(Globals.GhostLayer, true);
       ghostPart.SetHighlightColor(Globals.GhostPartHighlightColor);
       ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
-      ghostPart.SetHighlight(true, true);
-      ghostPart.gameObject.SetLayerRecursive(Globals.GhostLayer, true);
+      //ghostPart.SetHighlight(true, true);  TODO: Is there a way to have an always on un-outlined highlight?
       ghostPart.SetOpacity(0.5f);
 
       ghostPart.DemoteToPhysicslessPart();
@@ -103,8 +112,10 @@ namespace Stranded.MechBill {
       {
         EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
       }*/
+
       AttachmentTask task = (AttachmentTask)ghostPart.AddModule(nameof(AttachmentTask));
       task.enabled = true;
+      ghostPart.enabled = true;
       //task.GhostPart = ghostPart;
       return task;
     }
