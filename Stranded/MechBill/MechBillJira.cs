@@ -11,7 +11,7 @@ namespace Stranded.MechBill {
     [SerializeField] private Queue<AttachmentTask> _backlog = new();
     private Stack<ProtoCrewMember> _availableEngineers;
 
-    public Pathfinder Pathfinder = new();
+    public Pathfinder Pathfinder;
 
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
@@ -23,6 +23,7 @@ namespace Stranded.MechBill {
       Part.layerMask |= 1 << Globals.GhostLayer;
       RebuildAvailableEngineers();
       GameEvents.onVesselCrewWasModified.Add(OnVesselCrewWasModified);
+      Pathfinder = new Pathfinder(vessel);
       SetupCollisionIgnores();
     }
 

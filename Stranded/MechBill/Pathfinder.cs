@@ -7,18 +7,33 @@ namespace Stranded.MechBill {
   public class Pathfinder {
     private bool _gridNeedsRebuild = true;
 
-    private float _gridElementSize = 0.5f;
-    private int _gridSize = 150;
+    private int _gridSize = 80;
+
+    //private Vector3 _gridExtents;
+    //private readonly Vector3 _gridElementSize;
+    //private readonly Vector3 _invGridElementSize;
+    private float _gridElementSize;
+
     private bool[,,] _isObstructed;
 
     private GameObject _debugOverlay;
 
     public Transform Transform;
+    private Vessel _vessel;
     private static readonly int _mode = Shader.PropertyToID("_Mode");
     private ParticleSystem.Particle[] _particles;
     private ParticleSystem _particleSystem;
 
     // TODO: Subscribe to OnVesselStandardModification
+
+    public Pathfinder(Vessel vessel) {
+      _vessel = vessel;
+      Vector3 extents = vessel.vesselSize;
+      // _gridExtents = vessel.vesselSize + Vector3.one * 2f;
+      //_gridElementSize = _gridExtents / _gridSize;
+      //_invGridElementSize = new Vector3(1f / _gridElementSize.x, 1f / _gridElementSize.y, 1f / _gridElementSize.z)
+      GridElementSize = (extents.magnitude + 2f) / _gridSize;
+    }
 
     public float GridElementSize {
       get => _gridElementSize;
@@ -51,6 +66,8 @@ namespace Stranded.MechBill {
 
       ParticleSystem.MainModule main = _particleSystem.main;
       main.startLifetime = float.PositiveInfinity;
+      //main.startSize = _gridElementSize.magnitude / 4f;
+      main.startSize = _gridElementSize / 2f;
       main.maxParticles = _gridSize * _gridSize * _gridSize;
       ParticleSystem.EmissionModule emission = _particleSystem.emission;
       emission.enabled = false;
@@ -78,7 +95,9 @@ namespace Stranded.MechBill {
       _particleSystem.SetParticles(_particles, _particles.Length);
       _debugOverlay.SetLayerRecursive(Globals.GhostLayer);
       ParticleSystemRenderer renderer = _debugOverlay.GetComponent<ParticleSystemRenderer>();
-      renderer.material = (Resources.Load("Effects/fx_smokeTrail_light", typeof(ParticleSystemRenderer)) as ParticleSystemRenderer).material;
+      renderer.material =
+          (Resources.Load("Effects/fx_smokeTrail_light", typeof(ParticleSystemRenderer)) as ParticleSystemRenderer)
+          .material;
     }
 
     public List<Vector3> FindPath(Vector3 start, Vector3 end, float radius) {
@@ -144,6 +163,7 @@ namespace Stranded.MechBill {
                       _particles[FlattenGrid(point)].startColor = Color.white;
                       _particleSystem.SetParticles(_particles, _particles.Length);
                     }
+
                     result.Add(GridToWorld(point));
                     hasNext = cameFrom.TryGetValue(otherPoint, out otherPoint);
                   } while (hasNext);
@@ -164,8 +184,9 @@ namespace Stranded.MechBill {
 
     protected void RebuildCollisionGrid() {
       _isObstructed = new bool[_gridSize, _gridSize, _gridSize];
+      //Vector3 halfExtents = _gridElementSize / 2.0f;
       Vector3 halfExtents = _gridElementSize * Vector3.one / 2.0f;
-      Vector3Int point = new Vector3Int();
+      Vector3Int point = new();
       for (point.x = 0; point.x < _gridSize; ++point.x) {
         for (point.y = 0; point.y < _gridSize; ++point.y) {
           for (point.z = 0; point.z < _gridSize; ++point.z) {
@@ -197,6 +218,7 @@ namespace Stranded.MechBill {
         point.Item3 >= 0 && point.Item3 < _gridSize;
 
     public Vector3 GridToWorld(Vector3Int point) {
+      //return Transform.TransformPoint(Vector3.Scale(_gridElementSize, point - _gridSize * Vector3.one / 2.0f));
       return Transform.TransformPoint(_gridElementSize * (point - _gridSize * Vector3.one / 2.0f));
     }
 
@@ -205,6 +227,7 @@ namespace Stranded.MechBill {
     }
 
     public Vector3Int WorldToGrid(Vector3 point) {
+      //return Vector3Int.RoundToInt(Vector3.Scale(Transform.InverseTransformPoint(point), _invGridElementSize) +
       return Vector3Int.RoundToInt(Transform.InverseTransformPoint(point) / _gridElementSize +
                                    _gridSize * Vector3.one / 2.0f);
     }

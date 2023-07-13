@@ -106,7 +106,7 @@ namespace Stranded.MechBill {
       }
 
       _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
-          vessel.targetObject.GetTransform().position, 4.0f * TgtApproachDistance);
+          vessel.targetObject.GetTransform().position, TgtApproachDistance);
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
 
       bool approachingTarget = !GetNextPathPoint(out Vector3 nextPoint);
