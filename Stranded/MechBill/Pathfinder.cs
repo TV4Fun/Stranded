@@ -11,7 +11,10 @@ namespace Stranded.MechBill {
     private int _gridSize = 150;
     private bool[,,] _isObstructed;
 
+    private GameObject _debugOverlay;
+
     public Transform Transform;
+    private static readonly int _mode = Shader.PropertyToID("_Mode");
 
     // TODO: Subscribe to OnVesselStandardModification
 
@@ -34,6 +37,48 @@ namespace Stranded.MechBill {
     private int Sqr(int x) => x * x;
 
     private float Sqr(float x) => x * x;
+
+    private void CreateDebugOverlay() {
+      ParticleSystem particleSystem;
+      if (_debugOverlay == null) {
+        _debugOverlay = new GameObject("Pathfinder Debug Overlay");
+        _debugOverlay.transform.SetParent(Transform);
+        particleSystem = _debugOverlay.AddComponent<ParticleSystem>();
+      } else {
+        particleSystem = _debugOverlay.GetComponent<ParticleSystem>();
+      }
+
+      ParticleSystem.MainModule main = particleSystem.main;
+      main.startLifetime = float.PositiveInfinity;
+      main.maxParticles = _gridSize * _gridSize * _gridSize;
+      ParticleSystem.EmissionModule emission = particleSystem.emission;
+      emission.enabled = false;
+
+      //Vector3 extents = _gridElementSize * Vector3.one;
+      Vector3Int point = new();
+
+      ParticleSystem.Particle[] particles = new ParticleSystem.Particle[_gridSize * _gridSize * _gridSize];
+      int index = 0;
+      for (point.x = 0; point.x < _gridSize; ++point.x) {
+        for (point.y = 0; point.y < _gridSize; ++point.y) {
+          for (point.z = 0; point.z < _gridSize; ++point.z) {
+            particles[index++] = new ParticleSystem.Particle {
+                position = GridToWorld(point),
+                startColor = _isObstructed[point.x, point.y, point.z]
+                    ? new Color(1.0f, 0.0f, 0.0f, 0.2f)
+                    : new Color(0.0f, 1.0f, 0.0f, 0.1f),
+                startSize = _gridElementSize / 2f,
+                startLifetime = float.PositiveInfinity
+            };
+          }
+        }
+      }
+
+      particleSystem.SetParticles(particles, particles.Length);
+      _debugOverlay.SetLayerRecursive(3);
+      ParticleSystemRenderer renderer = _debugOverlay.GetComponent<ParticleSystemRenderer>();
+      renderer.material = (Resources.Load("Effects/fx_smokeTrail_light", typeof(ParticleSystemRenderer)) as ParticleSystemRenderer).material;
+    }
 
     public List<Vector3> FindPath(Vector3 start, Vector3 end, float radius) {
       if (_gridNeedsRebuild) {
@@ -122,6 +167,8 @@ namespace Stranded.MechBill {
           }
         }
       }
+
+      CreateDebugOverlay();
 
       _gridNeedsRebuild = false;
     }
