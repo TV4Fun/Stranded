@@ -76,7 +76,7 @@ namespace Stranded.MechBill {
       }
 
       _particleSystem.SetParticles(_particles, _particles.Length);
-      _debugOverlay.SetLayerRecursive(3);
+      _debugOverlay.SetLayerRecursive(Globals.GhostLayer);
       ParticleSystemRenderer renderer = _debugOverlay.GetComponent<ParticleSystemRenderer>();
       renderer.material = (Resources.Load("Effects/fx_smokeTrail_light", typeof(ParticleSystemRenderer)) as ParticleSystemRenderer).material;
     }
@@ -140,9 +140,9 @@ namespace Stranded.MechBill {
                   bool hasNext;
                   do {
                     Vector3Int point = new Vector3Int(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
-                    if (_particles != null) {
+                    if (Globals.ShowDebugOverlay) {
                       _particles[FlattenGrid(point)].startColor = Color.white;
-                      _particleSystem.SetParticles(_particles);
+                      _particleSystem.SetParticles(_particles, _particles.Length);
                     }
                     result.Add(GridToWorld(point));
                     hasNext = cameFrom.TryGetValue(otherPoint, out otherPoint);
@@ -174,7 +174,9 @@ namespace Stranded.MechBill {
         }
       }
 
-      CreateDebugOverlay();
+      if (Globals.ShowDebugOverlay) {
+        CreateDebugOverlay();
+      }
 
       _gridNeedsRebuild = false;
     }

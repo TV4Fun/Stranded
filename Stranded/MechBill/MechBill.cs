@@ -7,6 +7,8 @@ namespace Stranded.MechBill {
     private AttachmentTask _assignedTask = null;
     private List<Vector3> _pathToTarget = null;
 
+    private GameObject _sphere;
+
     public AttachmentTask AssignedTask {
       get => _assignedTask;
       set {
@@ -95,6 +97,14 @@ namespace Stranded.MechBill {
     }
 
     private void MoveToTarget() {
+      if (Globals.ShowDebugOverlay && _sphere == null) {
+        _sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        _sphere.GetComponent<Collider>().enabled = false;
+        Object.Destroy(_sphere.GetComponent<Rigidbody>());
+        _sphere.transform.SetParent(transform);
+        _sphere.transform.localScale = 0.1f * Vector3.one;
+      }
+
       _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
           vessel.targetObject.GetTransform().position, 4.0f * TgtApproachDistance);
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
@@ -104,7 +114,11 @@ namespace Stranded.MechBill {
         nextPoint = vessel.targetObject.GetTransform().position;
       }
 
-      Vector3 tgtRelativePosition = nextPoint - transform.position;
+      if (Globals.ShowDebugOverlay) {
+        _sphere.transform.position = nextPoint;
+      }
+
+    Vector3 tgtRelativePosition = nextPoint - transform.position;
       tgtFwd = tgtRelativePosition.normalized;
 
       Vector3 goalVelocity;
