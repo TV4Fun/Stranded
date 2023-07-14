@@ -1,8 +1,14 @@
-using System;
+using Highlighting;
 using UnityEngine;
 
 namespace Stranded.MechBill {
   public class AttachmentTask : PartModule, ITargetable {
+    public enum TaskStatus {
+      OnTheWay,
+      Attached
+    }
+
+    public TaskStatus Status { get; private set; } = TaskStatus.OnTheWay;
     // public Part Part;
     // public MechBillJira.Attachment Attachment;
     //[SerializeField]
@@ -45,6 +51,19 @@ namespace Stranded.MechBill {
     public VesselTargetModes GetTargetingMode() => VesselTargetModes.DirectionVelocityAndOrientation;
     public Transform GetTransform() => transform;
     public Vessel GetVessel() => vessel;
+
+    public void Attach() {
+      part.gameObject.SetLayerRecursive(0, true);
+      part.PromoteToPhysicalPart();
+      part.OnAttachFlight(part.parent);
+      part.CreateAttachJoint(part.attachMode);
+      part.SetHighlightColor(Highlighter.colorPartHighlightDefault);
+      part.SetHighlightType(Part.HighlightType.AlwaysOn);
+      part.SetHighlight(true, true);
+      part.SetOpacity(1.0f);
+
+      Status = TaskStatus.Attached;
+    }
 
     public static AttachmentTask Create(MechBillJira.Attachment attachment) {
       Part ghostPart =
@@ -94,7 +113,7 @@ namespace Stranded.MechBill {
       //ghostPart.OnAttachFlight(attachment.PotentialParent);
       //ghostPart.vessel.Parts.Add(ghostPart);
       //PotentialParent.addChild(ghostPart);
-      ghostPart.sameVesselCollision = false;
+      //ghostPart.sameVesselCollision = false;
 
       ModuleCargoPart cargoPart = ghostPart.FindModuleImplementing<ModuleCargoPart>();
       if (cargoPart != null) {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using JetBrains.Annotations;
 using UnityEngine;
 
@@ -6,6 +7,9 @@ namespace Stranded.MechBill {
   public class MechBill : KerbalEVA {
     private AttachmentTask _assignedTask = null;
     private List<Vector3> _pathToTarget = null;
+
+    private static FieldInfo _constructionTargetField =
+        typeof(KerbalEVA).GetField("constructionTarget", BindingFlags.NonPublic | BindingFlags.Instance);
 
     private GameObject _sphere;
 
@@ -96,7 +100,8 @@ namespace Stranded.MechBill {
       return false;
     }
 
-    private void MoveToTarget() {
+    private bool MoveToTarget() {
+      bool reachedTarget = false;
       if (Globals.ShowDebugOverlay && _sphere == null) {
         _sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         _sphere.GetComponent<Collider>().enabled = false;
@@ -124,6 +129,7 @@ namespace Stranded.MechBill {
       Vector3 goalVelocity;
       if (approachingTarget && (nextPoint - transform.position).magnitude <= TgtApproachDistance) {
         goalVelocity = Vector3.zero;
+        reachedTarget = true;
       } else {
         goalVelocity = tgtFwd * ApproachSpeedLimit;
       }
@@ -139,6 +145,7 @@ namespace Stranded.MechBill {
       }
 
       packTgtRPos = velError;
+      return reachedTarget;
     }
 
     private void ExecuteTask() {
@@ -154,7 +161,12 @@ namespace Stranded.MechBill {
         vessel.targetObject = _assignedTask;
       }
 
-      MoveToTarget();
+      if (AssignedTask.Status == AttachmentTask.TaskStatus.OnTheWay && MoveToTarget()) {
+        AssignedTask.Attach();
+        _constructionTargetField.SetValue(this, AssignedTask.part);
+        fsm.RunEvent(On_weldStart);
+        // AssignedTask = null;  // TODO: Mark task as complete and return to vessel.
+      }
     }
 
     public override void OnAwake() {
