@@ -89,7 +89,7 @@ namespace Stranded.MechBill {
 
       MechBillJira mechBillJira = FlightGlobals.ActiveVessel.GetComponent<MechBillJira>();
       if (mechBillJira != null) {
-        __result = mechBillJira.AttachPart(new MechBillJira.Attachment(attach), container, partInContainer);
+        __result = mechBillJira.AttachPart(new MechBillJira.Attachment(attach), container, partInContainer).GhostPart;
       }
 
       // Suppress normal post-attach updates that don't apply to a ghost part.

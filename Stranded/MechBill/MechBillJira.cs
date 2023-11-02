@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
-    [SerializeField] private Queue<AttachmentTask> _backlog = new();
+    [SerializeField] private Queue<Task> _backlog = new();
     private Stack<ProtoCrewMember> _availableEngineers;
 
     public Pathfinder Pathfinder;
@@ -59,15 +59,16 @@ namespace Stranded.MechBill {
     private void AssignTasks() {
       if (_availableEngineers.Count > 0 && _backlog.Count > 0) {
         ProtoCrewMember assignedEngineer = _availableEngineers.Pop();
-        AttachmentTask assignedTask = _backlog.Dequeue();
+        Task assignedTask = _backlog.Dequeue();
 
         MechBill mechBill = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
-        FlightGlobalsOverrides.StopNextForcedVesselSwitch();  // Prevent switching focus to newly spawned kerbal
+        FlightGlobalsOverrides.StopNextForcedVesselSwitch(); // Prevent switching focus to newly spawned kerbal
         mechBill.AssignedTask = assignedTask;
       }
     }
 
-    public Part AttachPart(Attachment attachment, ModuleInventoryPart container, ModuleCargoPart partInContainer) {
+    public AttachmentTask AttachPart(Attachment attachment, ModuleInventoryPart container,
+        ModuleCargoPart partInContainer) {
       if (attachment == null || attachment.PotentialParent == null) return null;
       AttachmentTask task = AttachmentTask.Create(attachment, container, partInContainer);
       task.Board = this;
@@ -77,14 +78,12 @@ namespace Stranded.MechBill {
       //EVAConstructionModeController.Instance.evaEditor.PlayAudioClip(EVAConstructionModeController.Instance.evaEditor
       //    .attachClip);
 
-      return task.part;
+      return task;
     }
 
-    public void CancelTask(AttachmentTask task) {
-      _backlog = new Queue<AttachmentTask>(_backlog.Where(x => x != task));
-      Destroy(task.gameObject);
+    public void OnTaskCancel(Task task) {
+      _backlog = new Queue<Task>(_backlog.Where(x => x != task));
     }
-
 
     // Class describing how to attach a new part to an existing vessel.
     public class Attachment {

@@ -2,13 +2,7 @@ using Highlighting;
 using UnityEngine;
 
 namespace Stranded.MechBill {
-  public class AttachmentTask : PartModule, ITargetable {
-    public enum TaskStatus {
-      OnTheWay,
-      Attached
-    }
-
-    public TaskStatus Status { get; private set; } = TaskStatus.OnTheWay;
+  public class AttachmentTask : Task {
     // public Part Part;
     // public MechBillJira.Attachment Attachment;
     //[SerializeField]
@@ -20,9 +14,7 @@ namespace Stranded.MechBill {
     //public Vector3 TgtPosition;
     //public Quaternion TgtRotation;
 
-    public MechBillJira Board;
-
-    //public Part GhostPart { get; private set; } = null;
+    public Part GhostPart { get; private set; } = null;
 
     /*public void SetAttachment(MechBillJira.Attachment attachment) {
       ParentPart = attachment.PotentialParent;
@@ -34,63 +26,60 @@ namespace Stranded.MechBill {
       _protoPartSnapshot = attachment.Caller.protoPartSnapshot;
     }*/
 
-    [KSPEvent(guiActive = true, guiName = "Cancel")]
-    public void Cancel() {
-      Board.CancelTask(this);
-    }
+    private ModuleInventoryPart _container;
+    private ModuleCargoPart _partInContainer;
 
-    public bool GetActiveTargetable() => true;
-    public string GetDisplayName() => name;
-    public Vector3 GetFwdVector() => transform.forward;
-    public string GetName() => name;
-
-    public Vector3 GetObtVelocity() => vessel.obt_velocity;
-    public Orbit GetOrbit() => vessel.orbit;
-    public OrbitDriver GetOrbitDriver() => vessel.orbitDriver;
-    public Vector3 GetSrfVelocity() => vessel.srf_velocity;
-    public VesselTargetModes GetTargetingMode() => VesselTargetModes.DirectionVelocityAndOrientation;
-    public Transform GetTransform() => transform;
-    public Vessel GetVessel() => vessel;
-
-    public ModuleInventoryPart Container;
-    public ModuleCargoPart PartInContainer;
+    public TaskTarget ContainerTarget { get; private set; }
+    public TaskTarget AttachTarget { get; private set; }
 
     public void Attach() {
-      part.gameObject.SetLayerRecursive(0, true);
-      part.PromoteToPhysicalPart();
-      part.OnAttachFlight(part.parent);
-      part.CreateAttachJoint(part.attachMode);
-      part.SetHighlightColor(Highlighter.colorPartHighlightDefault);
-      part.SetHighlightType(Part.HighlightType.AlwaysOn);
-      part.SetHighlight(true, true);
-      part.SetOpacity(1.0f);
+      GhostPart.gameObject.SetLayerRecursive(0, true);
+      GhostPart.PromoteToPhysicalPart();
+      GhostPart.OnAttachFlight(GhostPart.parent);
+      GhostPart.CreateAttachJoint(GhostPart.attachMode);
+      GhostPart.SetHighlightColor(Highlighter.colorPartHighlightDefault);
+      GhostPart.SetHighlightType(Part.HighlightType.AlwaysOn);
+      GhostPart.SetHighlight(true, true);
+      GhostPart.SetOpacity(1.0f);
 
-      Status = TaskStatus.Attached;
+      Complete();
+    }
+
+    protected override void CancelImpl() {
+      GhostPart.gameObject.DestroyGameObject();
     }
 
     public static AttachmentTask Create(MechBillJira.Attachment attachment, ModuleInventoryPart container,
         ModuleCargoPart partInContainer) {
-      Part ghostPart =
-          UIPartActionControllerInventory.Instance.CreatePartFromInventory(attachment.Caller
-              .protoPartSnapshot); // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
-      Transform ghostPartTransform = ghostPart.transform;
-      ghostPart.attRotation0 = attachment.Rotation;
-      ghostPart.attRotation = attachment.Caller.attRotation;
-      ghostPart.attPos0 = attachment.Position;
+      AttachmentTask task = ScriptableObject.CreateInstance<AttachmentTask>();
+      task.Init(attachment, container, partInContainer);
+
+      return task;
+    }
+
+    private void Init(MechBillJira.Attachment attachment, ModuleInventoryPart container,
+        ModuleCargoPart partInContainer) {
+      GhostPart = UIPartActionControllerInventory.Instance.CreatePartFromInventory(attachment.Caller.protoPartSnapshot);
+      // Instantiate(Caller, PotentialParent.transform, true);
+      //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
+      Transform ghostPartTransform = GhostPart.transform;
+      GhostPart.attRotation0 = attachment.Rotation;
+      GhostPart.attRotation = attachment.Caller.attRotation;
+      GhostPart.attPos0 = attachment.Position;
       ghostPartTransform.rotation = attachment.Rotation * attachment.Caller.attRotation;
       ghostPartTransform.position = attachment.Position;
 
-      ghostPart.isAttached = true;
+      GhostPart.isAttached = true;
       ghostPartTransform.parent = attachment.PotentialParent.transform;
 
       if (attachment.CallerPartNode != null) {
-        if (attachment.CallerPartNode.owner.persistentId == ghostPart.persistentId) {
-          AttachNode attachNode = ghostPart.FindAttachNode(attachment.CallerPartNode.id);
+        if (attachment.CallerPartNode.owner.persistentId == GhostPart.persistentId) {
+          AttachNode attachNode = GhostPart.FindAttachNode(attachment.CallerPartNode.id);
           if (attachNode != null) {
             attachNode.attachedPart = attachment.PotentialParent;
-          } else if (attachment.CallerPartNode.id == ghostPart.srfAttachNode.id) {
-            ghostPart.srfAttachNode.attachedPart = attachment.PotentialParent;
-            ghostPart.srfAttachNode.srfAttachMeshName = attachment.CallerPartNode.srfAttachMeshName;
+          } else if (attachment.CallerPartNode.id == GhostPart.srfAttachNode.id) {
+            GhostPart.srfAttachNode.attachedPart = attachment.PotentialParent;
+            GhostPart.srfAttachNode.srfAttachMeshName = attachment.CallerPartNode.srfAttachMeshName;
           }
         } else {
           attachment.CallerPartNode.attachedPart = attachment.PotentialParent;
@@ -98,51 +87,54 @@ namespace Stranded.MechBill {
       }
 
       if (attachment.OtherPartNode != null) {
-        attachment.OtherPartNode.attachedPart = ghostPart;
+        attachment.OtherPartNode.attachedPart = GhostPart;
       }
 
       //GhostPart.attPos0 = ghostPartTransform.localPosition;
       //GhostPart.attRotation0 = ghostPartTransform.localRotation;
 
       if (attachment.Mode == AttachModes.SRF_ATTACH) {
-        ghostPart.attachMode = AttachModes.SRF_ATTACH;
-        ghostPart.srfAttachNode.attachedPart = attachment.PotentialParent;
+        GhostPart.attachMode = AttachModes.SRF_ATTACH;
+        GhostPart.srfAttachNode.attachedPart = attachment.PotentialParent;
       }
 
-      ghostPart.parent = attachment.PotentialParent;
-      ghostPart.vessel = attachment.PotentialParent.vessel;
-      ghostPart.State = PartStates.DEACTIVATED;
-      ghostPart.ResumeState = PartStates.DEACTIVATED;
+      GhostPart.parent = attachment.PotentialParent;
+      GhostPart.vessel = attachment.PotentialParent.vessel;
+      GhostPart.State = PartStates.DEACTIVATED;
+      GhostPart.ResumeState = PartStates.DEACTIVATED;
 
       //ghostPart.OnAttachFlight(attachment.PotentialParent);
       //ghostPart.vessel.Parts.Add(ghostPart);
       //PotentialParent.addChild(ghostPart);
       //ghostPart.sameVesselCollision = false;
 
-      ModuleCargoPart cargoPart = ghostPart.FindModuleImplementing<ModuleCargoPart>();
+      ModuleCargoPart cargoPart = GhostPart.FindModuleImplementing<ModuleCargoPart>();
       if (cargoPart != null) {
         cargoPart.isEnabled = false;
       }
 
-      ghostPart.gameObject.SetLayerRecursive(Globals.GhostLayer, true);
-      ghostPart.SetHighlightColor(Globals.GhostPartHighlightColor);
-      ghostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
+      GhostPart.gameObject.SetLayerRecursive(Globals.GhostLayer, true);
+      GhostPart.SetHighlightColor(Globals.GhostPartHighlightColor);
+      GhostPart.SetHighlightType(Part.HighlightType.OnMouseOver);
       //ghostPart.SetHighlight(true, true);  TODO: Is there a way to have an always on un-outlined highlight?
-      ghostPart.SetOpacity(0.5f);
+      GhostPart.SetOpacity(0.5f);
 
-      ghostPart.DemoteToPhysicslessPart();
+      GhostPart.DemoteToPhysicslessPart();
       /*if (newPart.isCompund)
       {
         EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
       }*/
 
-      AttachmentTask task = (AttachmentTask)ghostPart.AddModule(nameof(AttachmentTask));
-      task.Container = container;
-      task.PartInContainer = partInContainer;
-      task.enabled = true;
-      ghostPart.enabled = true;
-      //task.GhostPart = ghostPart;
-      return task;
+      AttachTarget = (TaskTarget)GhostPart.AddModule(nameof(TaskTarget));
+      AttachTarget.Task = this;
+
+      _container = container;
+      ContainerTarget = (TaskTarget)_container.part.AddModule(nameof(TaskTarget));
+      ContainerTarget.Task = this;
+
+      _partInContainer = partInContainer;
+      // task.enabled = true;
+      GhostPart.enabled = true;
     }
   }
 }

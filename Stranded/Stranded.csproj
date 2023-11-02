@@ -101,6 +101,8 @@
         <Compile Include="MechBill\MechBillJira.cs" />
         <Compile Include="MechBill\MechBillLoader.cs" />
         <Compile Include="MechBill\Pathfinder.cs" />
+        <Compile Include="MechBill\Task.cs" />
+        <Compile Include="MechBill\TaskTarget.cs" />
         <Compile Include="Stranded.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="StrandedLoader.cs" />

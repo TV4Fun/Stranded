@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Stranded.MechBill {
   public class MechBill : KerbalEVA {
-    private AttachmentTask _assignedTask = null;
+    private Task _assignedTask = null;
     private List<Vector3> _pathToTarget = null;
 
     public KerbalFSM AiFsm;
@@ -31,10 +31,10 @@ namespace Stranded.MechBill {
 
     private GameObject _debugSphere;
 
-    public AttachmentTask AssignedTask {
+    public Task AssignedTask {
       get => _assignedTask;
       set {
-        vessel.targetObject = value;
+        // vessel.targetObject = value;
         _assignedTask = value;
         AiFsm.RunEvent(OnTaskAssigned);
       }
@@ -178,10 +178,10 @@ namespace Stranded.MechBill {
         ToggleJetpack(true);
       }
 
-      vessel.targetObject = _assignedTask;
+      vessel.targetObject = ((AttachmentTask)_assignedTask).AttachTarget; // FIXME
 
       if (MoveToTarget()) {
-        AssignedTask.Attach();
+        ((AttachmentTask)_assignedTask).Attach(); // FIXME
         EnterConstructionMode();
       }
     }
@@ -193,7 +193,7 @@ namespace Stranded.MechBill {
     }
 
     private void ConstructionEntered(KFSMState st) {
-      constructionTarget = AssignedTask.part;
+      constructionTarget = ((AttachmentTask)_assignedTask).GhostPart; // FIXME
       fsm.RunEvent(On_weldStart);
       // AssignedTask = null;  // TODO: Mark task as complete and return to vessel.
     }
