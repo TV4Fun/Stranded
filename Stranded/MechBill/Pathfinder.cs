@@ -4,7 +4,7 @@ using Stranded.Util;
 using UnityEngine;
 
 namespace Stranded.MechBill {
-  public class Pathfinder {
+  public class Pathfinder : VesselModule {
     private bool _gridNeedsRebuild = true;
 
     private int _gridSize = 80;
@@ -18,16 +18,12 @@ namespace Stranded.MechBill {
 
     private GameObject _debugOverlay;
 
-    public Transform Transform;
-    private Vessel _vessel;
     private static readonly int _mode = Shader.PropertyToID("_Mode");
-    private ParticleSystem.Particle[] _particles;
-    private ParticleSystem _particleSystem;
+    private ParticleSystem.Particle[] _debugParticles;
+    private ParticleSystem _debugParticleSystem;
 
     // TODO: Subscribe to OnVesselStandardModification
-
-    public Pathfinder(Vessel vessel) {
-      _vessel = vessel;
+    protected override void OnStart() {
       Vector3 extents = vessel.vesselSize;
       // _gridExtents = vessel.vesselSize + Vector3.one * 2f;
       //_gridElementSize = _gridExtents / _gridSize;
@@ -58,29 +54,29 @@ namespace Stranded.MechBill {
     private void CreateDebugOverlay() {
       if (_debugOverlay == null) {
         _debugOverlay = new GameObject("Pathfinder Debug Overlay");
-        _debugOverlay.transform.SetParent(Transform);
-        _particleSystem = _debugOverlay.AddComponent<ParticleSystem>();
+        _debugOverlay.transform.SetParent(transform);
+        _debugParticleSystem = _debugOverlay.AddComponent<ParticleSystem>();
       } else {
-        _particleSystem = _debugOverlay.GetComponent<ParticleSystem>();
+        _debugParticleSystem = _debugOverlay.GetComponent<ParticleSystem>();
       }
 
-      ParticleSystem.MainModule main = _particleSystem.main;
+      ParticleSystem.MainModule main = _debugParticleSystem.main;
       main.startLifetime = float.PositiveInfinity;
       //main.startSize = _gridElementSize.magnitude / 4f;
       main.startSize = _gridElementSize / 2f;
       main.maxParticles = _gridSize * _gridSize * _gridSize;
-      ParticleSystem.EmissionModule emission = _particleSystem.emission;
+      ParticleSystem.EmissionModule emission = _debugParticleSystem.emission;
       emission.enabled = false;
 
       //Vector3 extents = _gridElementSize * Vector3.one;
       Vector3Int point = new();
 
-      _particles = new ParticleSystem.Particle[_gridSize * _gridSize * _gridSize];
+      _debugParticles = new ParticleSystem.Particle[_gridSize * _gridSize * _gridSize];
       int index = 0;
       for (point.x = 0; point.x < _gridSize; ++point.x) {
         for (point.y = 0; point.y < _gridSize; ++point.y) {
           for (point.z = 0; point.z < _gridSize; ++point.z) {
-            _particles[index++] = new ParticleSystem.Particle {
+            _debugParticles[index++] = new ParticleSystem.Particle {
                 position = GridToWorld(point),
                 startColor = _isObstructed[point.x, point.y, point.z]
                     ? new Color(1.0f, 0.0f, 0.0f, 0.2f)
@@ -92,7 +88,7 @@ namespace Stranded.MechBill {
         }
       }
 
-      _particleSystem.SetParticles(_particles, _particles.Length);
+      _debugParticleSystem.SetParticles(_debugParticles, _debugParticles.Length);
       _debugOverlay.SetLayerRecursive(Globals.GhostLayer);
       ParticleSystemRenderer renderer = _debugOverlay.GetComponent<ParticleSystemRenderer>();
       renderer.material =
@@ -121,7 +117,7 @@ namespace Stranded.MechBill {
       int endY = endPoint.y;
       int endZ = endPoint.z;
 
-      int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / Transform.lossyScale.x));
+      int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / transform.lossyScale.x));
 
       var cameFrom = new Dictionary<ValueTuple<int, int, int>, ValueTuple<int, int, int>>();
       //var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
@@ -160,8 +156,8 @@ namespace Stranded.MechBill {
                   do {
                     Vector3Int point = new Vector3Int(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
                     if (Globals.ShowDebugOverlay) {
-                      _particles[FlattenGrid(point)].startColor = Color.white;
-                      _particleSystem.SetParticles(_particles, _particles.Length);
+                      _debugParticles[FlattenGrid(point)].startColor = Color.white;
+                      _debugParticleSystem.SetParticles(_debugParticles, _debugParticles.Length);
                     }
 
                     result.Add(GridToWorld(point));
@@ -218,8 +214,8 @@ namespace Stranded.MechBill {
         point.Item3 >= 0 && point.Item3 < _gridSize;
 
     public Vector3 GridToWorld(Vector3Int point) {
-      //return Transform.TransformPoint(Vector3.Scale(_gridElementSize, point - _gridSize * Vector3.one / 2.0f));
-      return Transform.TransformPoint(_gridElementSize * (point - _gridSize * Vector3.one / 2.0f));
+      //return transform.TransformPoint(Vector3.Scale(_gridElementSize, point - _gridSize * Vector3.one / 2.0f));
+      return transform.TransformPoint(_gridElementSize * (point - _gridSize * Vector3.one / 2.0f));
     }
 
     public int FlattenGrid(Vector3Int point) {
@@ -227,8 +223,8 @@ namespace Stranded.MechBill {
     }
 
     public Vector3Int WorldToGrid(Vector3 point) {
-      //return Vector3Int.RoundToInt(Vector3.Scale(Transform.InverseTransformPoint(point), _invGridElementSize) +
-      return Vector3Int.RoundToInt(Transform.InverseTransformPoint(point) / _gridElementSize +
+      //return Vector3Int.RoundToInt(Vector3.Scale(transform.InverseTransformPoint(point), _invGridElementSize) +
+      return Vector3Int.RoundToInt(transform.InverseTransformPoint(point) / _gridElementSize +
                                    _gridSize * Vector3.one / 2.0f);
     }
   }

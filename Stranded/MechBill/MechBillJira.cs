@@ -23,13 +23,12 @@ namespace Stranded.MechBill {
       Part.layerMask |= 1 << Globals.GhostLayer;
       RebuildAvailableEngineers();
       GameEvents.onVesselCrewWasModified.Add(OnVesselCrewWasModified);
-      Pathfinder = new Pathfinder(vessel);
+      Pathfinder = vessel.GetComponent<Pathfinder>();
       SetupCollisionIgnores();
     }
 
     private void Update() {
       AssignTasks();
-      Pathfinder.Transform = transform;
     }
 
     private static void SetupCollisionIgnores() {
@@ -63,14 +62,14 @@ namespace Stranded.MechBill {
         AttachmentTask assignedTask = _backlog.Dequeue();
 
         MechBill mechBill = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
-        FlightGlobalsOverrides.StopNextForcedVesselSwitch();
+        FlightGlobalsOverrides.StopNextForcedVesselSwitch();  // Prevent switching focus to newly spawned kerbal
         mechBill.AssignedTask = assignedTask;
       }
     }
 
-    public Part AttachPart(Attachment attachment) {
+    public Part AttachPart(Attachment attachment, ModuleInventoryPart container, ModuleCargoPart partInContainer) {
       if (attachment == null || attachment.PotentialParent == null) return null;
-      AttachmentTask task = AttachmentTask.Create(attachment);
+      AttachmentTask task = AttachmentTask.Create(attachment, container, partInContainer);
       task.Board = this;
 
       _backlog.Enqueue(task);

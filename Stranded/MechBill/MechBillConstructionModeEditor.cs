@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using HarmonyLib;
 using JetBrains.Annotations;
 
@@ -11,6 +12,14 @@ namespace Stranded.MechBill {
     private static VesselType _previousVesselType;
     private static float _previousEvaConstructionRange;
 
+    private static readonly FieldInfo _moduleInventoryPart =
+        typeof(UIPartActionInventorySlot).GetField("moduleInventoryPart",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+
+    private static readonly FieldInfo _cargoPartRef =
+        typeof(UIPartActionInventorySlot).GetField("cargoPartRef",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+
     [UsedImplicitly]
     [HarmonyPrefix]
     [HarmonyPatch("UpdatePartPlacementPosition")]
@@ -19,8 +28,10 @@ namespace Stranded.MechBill {
       _previousEvaConstructionRange = GameSettings.EVA_CONSTRUCTION_RANGE;
 
       if (!FlightGlobals.ActiveVessel.isEVA) {
-        GameSettings.EVA_CONSTRUCTION_RANGE = float.MaxValue;
-        FlightGlobals.ActiveVessel.vesselType = VesselType.EVA;
+        GameSettings.EVA_CONSTRUCTION_RANGE =
+            float.MaxValue; // Allow construction anywhere on the vessel TODO: Maybe consider limiting range for ground attachments.
+        FlightGlobals.ActiveVessel.vesselType =
+            VesselType.EVA; // Have to set vessel type to EVA for construction UI to show up.
       }
 
       return true;
@@ -59,14 +70,15 @@ namespace Stranded.MechBill {
         return true;
       }
 
-      MechBillJira mechBillJira = FlightGlobals.ActiveVessel.GetComponent<MechBillJira>();
-      if (mechBillJira != null) {
-        __result = mechBillJira.AttachPart(new MechBillJira.Attachment(attach));
-      }
+      ModuleInventoryPart container = null;
+      ModuleCargoPart partInContainer = null;
 
       if (UIPartActionControllerInventory.Instance != null) {
-        if (UIPartActionControllerInventory.Instance.CurrentInventorySlotClicked != null) {
-          UIPartActionControllerInventory.Instance.CurrentInventorySlotClicked.ReturnHeldPartToThisSlot();
+        UIPartActionInventorySlot currentSlot = UIPartActionControllerInventory.Instance.CurrentInventorySlotClicked;
+        if (currentSlot != null) {
+          currentSlot.ReturnHeldPartToThisSlot();
+          container = (ModuleInventoryPart)_moduleInventoryPart.GetValue(currentSlot);
+          partInContainer = (ModuleCargoPart)_cargoPartRef.GetValue(currentSlot);
           // TODO: Make this grayed out and disappear when an engineer collects it.
         }
 
@@ -75,6 +87,12 @@ namespace Stranded.MechBill {
         }*/
       }
 
+      MechBillJira mechBillJira = FlightGlobals.ActiveVessel.GetComponent<MechBillJira>();
+      if (mechBillJira != null) {
+        __result = mechBillJira.AttachPart(new MechBillJira.Attachment(attach), container, partInContainer);
+      }
+
+      // Suppress normal post-attach updates that don't apply to a ghost part.
       throw new SoDoneWithThis();
     }
   }

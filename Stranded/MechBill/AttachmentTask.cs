@@ -52,6 +52,9 @@ namespace Stranded.MechBill {
     public Transform GetTransform() => transform;
     public Vessel GetVessel() => vessel;
 
+    public ModuleInventoryPart Container;
+    public ModuleCargoPart PartInContainer;
+
     public void Attach() {
       part.gameObject.SetLayerRecursive(0, true);
       part.PromoteToPhysicalPart();
@@ -65,7 +68,8 @@ namespace Stranded.MechBill {
       Status = TaskStatus.Attached;
     }
 
-    public static AttachmentTask Create(MechBillJira.Attachment attachment) {
+    public static AttachmentTask Create(MechBillJira.Attachment attachment, ModuleInventoryPart container,
+        ModuleCargoPart partInContainer) {
       Part ghostPart =
           UIPartActionControllerInventory.Instance.CreatePartFromInventory(attachment.Caller
               .protoPartSnapshot); // Instantiate(Caller, PotentialParent.transform, true); //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
@@ -133,6 +137,8 @@ namespace Stranded.MechBill {
       }*/
 
       AttachmentTask task = (AttachmentTask)ghostPart.AddModule(nameof(AttachmentTask));
+      task.Container = container;
+      task.PartInContainer = partInContainer;
       task.enabled = true;
       ghostPart.enabled = true;
       //task.GhostPart = ghostPart;
