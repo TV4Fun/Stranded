@@ -11,6 +11,17 @@ namespace Stranded.MechBill {
 
     public MechBillJira Board;
 
+    private MechBill _assignee;
+
+    public MechBill Assignee {
+      get => _assignee;
+      set {
+        _assignee = value;
+        Status = TaskStatus.InProgress;
+        _assignee.AssignedTask = this;
+      }
+    }
+
     public TaskStatus Status { get; private set; } = TaskStatus.Open;
 
     public virtual void Cancel() {
@@ -21,7 +32,10 @@ namespace Stranded.MechBill {
 
     protected void Complete() {
       Status = TaskStatus.Done;
+      Board.OnTaskComplete(this);
     }
+
+    public virtual void FixedUpdate() { }
 
     protected abstract void CancelImpl();
   }

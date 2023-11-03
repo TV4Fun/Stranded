@@ -131,9 +131,9 @@ namespace Stranded.MechBill {
         _debugSphere.transform.localScale = 0.1f * Vector3.one;
       }
 
+      // Find a path to the target if we don't already have one.
       _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
           vessel.targetObject.GetTransform().position, TgtApproachDistance);
-      Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
 
       bool approachingTarget = !GetNextPathPoint(out Vector3 nextPoint);
       if (approachingTarget) {
@@ -160,6 +160,7 @@ namespace Stranded.MechBill {
       Debug.Log("Target Velocity: " + vessel.targetObject.GetObtVelocity() + "; Vessel Velocity: " +
                 part.orbit.GetVel() + "; Relative Velocity: " + tgtRelativeVelocity + "; Goal Velocity: " +
                 goalVelocity);*/
+      Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
       Vector3 velError = goalVelocity - tgtRelativeVelocity;
       if (velError.sqrMagnitude > 1.0f) {
         velError.Normalize();

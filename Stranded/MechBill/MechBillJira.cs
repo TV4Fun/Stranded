@@ -9,6 +9,7 @@ using UnityEngine;
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
     [SerializeField] private Queue<Task> _backlog = new();
+    [SerializeField] private HashSet<Task> _assignedTasks = new();
     private Stack<ProtoCrewMember> _availableEngineers;
 
     public Pathfinder Pathfinder;
@@ -61,9 +62,11 @@ namespace Stranded.MechBill {
         ProtoCrewMember assignedEngineer = _availableEngineers.Pop();
         Task assignedTask = _backlog.Dequeue();
 
-        MechBill mechBill = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
+        MechBill assignee = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
         FlightGlobalsOverrides.StopNextForcedVesselSwitch(); // Prevent switching focus to newly spawned kerbal
-        mechBill.AssignedTask = assignedTask;
+        // mechBill.AssignedTask = assignedTask;
+        assignedTask.Assignee = assignee;
+        _assignedTasks.Add(assignedTask);
       }
     }
 
@@ -82,7 +85,23 @@ namespace Stranded.MechBill {
     }
 
     public void OnTaskCancel(Task task) {
-      _backlog = new Queue<Task>(_backlog.Where(x => x != task));
+      if (_backlog.Contains(task)) {
+        _backlog = new Queue<Task>(_backlog.Where(x => x != task));
+      }
+
+      if (_assignedTasks.Contains(task)) {
+        _assignedTasks.Remove(task);
+      }
+    }
+
+    public void OnTaskComplete(Task task) {
+      _assignedTasks.Remove(task);
+    }
+
+    private void FixedUpdate() {
+      foreach (Task task in _assignedTasks) {
+        task.FixedUpdate();
+      }
     }
 
     // Class describing how to attach a new part to an existing vessel.

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Stranded.MechBill {
@@ -15,11 +16,13 @@ namespace Stranded.MechBill {
     public Transform GetTransform() => transform;
     public Vessel GetVessel() => vessel;
 
-    public Task Task;
+    public WeakReference<Task> Task;
 
     [KSPEvent(guiActive = true, guiName = "Cancel")]
     public void Cancel() {
-      Task.Cancel();
+      if (Task.TryGetTarget(out Task actualTask) && actualTask != null) {
+        actualTask.Cancel();
+      }
     }
   }
 }

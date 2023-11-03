@@ -26,8 +26,8 @@ namespace Stranded.MechBill {
       _protoPartSnapshot = attachment.Caller.protoPartSnapshot;
     }*/
 
-    private ModuleInventoryPart _container;
-    private ModuleCargoPart _partInContainer;
+    [SerializeField] private ModuleInventoryPart Container;
+    [SerializeField] private ModuleCargoPart PartInContainer;
 
     public TaskTarget ContainerTarget { get; private set; }
     public TaskTarget AttachTarget { get; private set; }
@@ -42,16 +42,32 @@ namespace Stranded.MechBill {
       GhostPart.SetHighlight(true, true);
       GhostPart.SetOpacity(1.0f);
 
+      GhostPart = null;
+
+      Cleanup();
+
       Complete();
     }
 
     protected override void CancelImpl() {
-      GhostPart.gameObject.DestroyGameObject();
+      Cleanup();
+    }
+
+    private void Cleanup() {
+      if (GhostPart != null) {
+        GhostPart.gameObject.DestroyGameObject();
+      }
+      Destroy(ContainerTarget);
+      Destroy(AttachTarget);
+    }
+
+    private void OnDestroy() {
+      Cleanup();
     }
 
     public static AttachmentTask Create(MechBillJira.Attachment attachment, ModuleInventoryPart container,
         ModuleCargoPart partInContainer) {
-      AttachmentTask task = ScriptableObject.CreateInstance<AttachmentTask>();
+      AttachmentTask task = CreateInstance<AttachmentTask>();
       task.Init(attachment, container, partInContainer);
 
       return task;
@@ -120,19 +136,19 @@ namespace Stranded.MechBill {
       GhostPart.SetOpacity(0.5f);
 
       GhostPart.DemoteToPhysicslessPart();
-      /*if (newPart.isCompund)
+      /*if (newPart.isCompound)
       {
         EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
       }*/
 
       AttachTarget = (TaskTarget)GhostPart.AddModule(nameof(TaskTarget));
-      AttachTarget.Task = this;
+      AttachTarget.Task.SetTarget(this);
 
-      _container = container;
-      ContainerTarget = (TaskTarget)_container.part.AddModule(nameof(TaskTarget));
-      ContainerTarget.Task = this;
+      Container = container;
+      ContainerTarget = (TaskTarget)Container.part.AddModule(nameof(TaskTarget));
+      ContainerTarget.Task.SetTarget(this);
 
-      _partInContainer = partInContainer;
+      PartInContainer = partInContainer;
       // task.enabled = true;
       GhostPart.enabled = true;
     }
