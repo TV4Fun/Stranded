@@ -19,6 +19,7 @@ namespace Stranded.MechBill {
         _assignee = value;
         Status = TaskStatus.InProgress;
         _assignee.AssignedTask = this;
+        OnAssigned();
       }
     }
 
@@ -32,10 +33,13 @@ namespace Stranded.MechBill {
 
     protected void Complete() {
       Status = TaskStatus.Done;
+      _assignee.OnTaskCompleted();
       Board.OnTaskComplete(this);
     }
 
     public virtual void FixedUpdate() { }
+
+    protected virtual void OnAssigned() { }
 
     protected abstract void CancelImpl();
   }

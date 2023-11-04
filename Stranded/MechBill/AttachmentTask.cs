@@ -1,4 +1,6 @@
+using System;
 using Highlighting;
+using Stranded.Util;
 using UnityEngine;
 
 namespace Stranded.MechBill {
@@ -29,6 +31,18 @@ namespace Stranded.MechBill {
     [SerializeField] private ModuleInventoryPart Container;
     [SerializeField] private ModuleCargoPart PartInContainer;
 
+    public KerbalFSM Fsm;
+
+    public KFSMState StIdle;
+    public KFSMState StGoingToContainer;
+    public KFSMState StGettingPart;
+    public KFSMState StGoingToTarget;
+    public KFSMState StBuilding;
+    public KFSMState StReturning;
+
+    public KFSMEvent OnTaskAssigned;
+    public KFSMEvent OnContainerReached;
+
     public TaskTarget ContainerTarget { get; private set; }
     public TaskTarget AttachTarget { get; private set; }
 
@@ -45,7 +59,6 @@ namespace Stranded.MechBill {
       GhostPart = null;
 
       Cleanup();
-
       Complete();
     }
 
@@ -57,6 +70,7 @@ namespace Stranded.MechBill {
       if (GhostPart != null) {
         GhostPart.gameObject.DestroyGameObject();
       }
+
       Destroy(ContainerTarget);
       Destroy(AttachTarget);
     }
@@ -73,8 +87,7 @@ namespace Stranded.MechBill {
       return task;
     }
 
-    private void Init(MechBillJira.Attachment attachment, ModuleInventoryPart container,
-        ModuleCargoPart partInContainer) {
+    private Part SetupGhostPart(MechBillJira.Attachment attachment) {
       GhostPart = UIPartActionControllerInventory.Instance.CreatePartFromInventory(attachment.Caller.protoPartSnapshot);
       // Instantiate(Caller, PotentialParent.transform, true);
       //UIPartActionControllerInventory.Instance.CreatePartFromInventory(Caller.protoPartSnapshot);
@@ -141,16 +154,79 @@ namespace Stranded.MechBill {
         EVAConstructionModeController.Instance.evaEditor.selectedCompoundPart = newPart as CompoundPart;
       }*/
 
+      GhostPart.enabled = true;
+
+      return GhostPart;
+    }
+
+    private void SetupTargets(ModuleInventoryPart container) {
       AttachTarget = (TaskTarget)GhostPart.AddModule(nameof(TaskTarget));
-      AttachTarget.Task.SetTarget(this);
+      AttachTarget.Task = new WeakReference<Task>(this);
 
       Container = container;
       ContainerTarget = (TaskTarget)Container.part.AddModule(nameof(TaskTarget));
-      ContainerTarget.Task.SetTarget(this);
+      ContainerTarget.Task = new WeakReference<Task>(this);
+    }
+
+    // ReSharper disable once InconsistentNaming
+    private void SetupFSM() {
+
+      Fsm = new KerbalFSM();
+
+      StIdle = new KFSMState("Idle");
+      Fsm.AddState(StIdle);
+
+      StGoingToContainer = new KFSMState("En route to container");
+      StGoingToContainer.OnEnter = StGoingToContainer_OnEnter;
+      StGoingToContainer.OnLeave = StGoingToContainer_OnLeave;
+      Fsm.AddState(StGoingToContainer);
+
+      StGettingPart = new KFSMState("Getting part from container");
+      Fsm.AddState(StGettingPart);
+
+      StGoingToTarget = new KFSMState("En route to target");
+      Fsm.AddState(StGoingToTarget);
+
+      StBuilding = new KFSMState("Attaching part");
+      Fsm.AddState(StBuilding);
+
+      StReturning = new KFSMState("Returning to base");
+      Fsm.AddState(StReturning);
+
+      OnTaskAssigned = new KFSMEvent("Task assigned");
+      OnTaskAssigned.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
+      OnTaskAssigned.GoToStateOnEvent = StGoingToContainer;
+      Fsm.AddEvent(OnTaskAssigned, StIdle);
+
+      OnContainerReached = new KFSMEvent("Container reached");
+      OnContainerReached.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
+      OnContainerReached.GoToStateOnEvent = StGettingPart;
+      Fsm.AddEvent(OnContainerReached, StGoingToContainer);
+
+      Fsm.StartFSM(StIdle);
+    }
+
+    protected override void OnAssigned() {
+      Fsm.RunEvent(OnTaskAssigned);
+    }
+
+    private void StGoingToContainer_OnEnter(KFSMState st) {
+      Assignee.Target = ContainerTarget;
+      Assignee.OnTargetReached += new KFSMEventCallback(Fsm, OnContainerReached);
+    }
+
+    private void StGoingToContainer_OnLeave(KFSMState st) {
+      Assignee.OnTargetReached -= new KFSMEventCallback(Fsm, OnContainerReached);
+    }
+
+    private void Init(MechBillJira.Attachment attachment, ModuleInventoryPart container,
+        ModuleCargoPart partInContainer) {
+      SetupGhostPart(attachment);
+      SetupTargets(container);
+      SetupFSM();
 
       PartInContainer = partInContainer;
       // task.enabled = true;
-      GhostPart.enabled = true;
     }
   }
 }

@@ -7,18 +7,12 @@ namespace Stranded.MechBill {
   public class MechBill : KerbalEVA {
     private Task _assignedTask = null;
     private List<Vector3> _pathToTarget = null;
+    private Pathfinder _pathfinder;
 
-    public KerbalFSM AiFsm;
-
-    public KFSMState AiStIdle;
-    public KFSMState AiStGoingToContainer;
-    public KFSMState AiStGettingPart;
-    public KFSMState AiStGoingToTarget;
-    public KFSMState AiStBuilding;
-    public KFSMState AiStReturning;
-
-    public KFSMEvent OnTaskAssigned;
-    public KFSMEvent OnTaskCompleted;
+    public Callback OnTaskAssigned = delegate {  };
+    public Callback OnTaskCompleted = delegate {  };
+    public Callback OnTargetAssigned = delegate {  };
+    public Callback OnTargetReached = delegate {  };
 
     private static readonly FieldInfo _constructionTargetField =
         typeof(KerbalEVA).GetField("constructionTarget", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -29,6 +23,8 @@ namespace Stranded.MechBill {
       set => _constructionTargetField.SetValue(this, value);
     }
 
+    public bool HasAITarget { get; private set; } = false;
+
     private GameObject _debugSphere;
 
     public Task AssignedTask {
@@ -36,7 +32,24 @@ namespace Stranded.MechBill {
       set {
         // vessel.targetObject = value;
         _assignedTask = value;
-        AiFsm.RunEvent(OnTaskAssigned);
+        OnTaskAssigned();
+      }
+    }
+
+    public ITargetable Target {
+      get => vessel.targetObject;
+      set {
+        // ReSharper disable once PossibleUnintendedReferenceComparison
+        if (value != vessel.targetObject) {
+          if (value != null) {
+            _pathfinder = value.GetVessel().GetComponent<Pathfinder>();
+          }
+
+          HasAITarget = true;
+          _pathToTarget = null;
+          vessel.targetObject = value;
+          OnTargetAssigned();
+        }
       }
     }
 
@@ -57,9 +70,12 @@ namespace Stranded.MechBill {
     public float TgtApproachDistance = 1.0f;
 
     protected override void HandleMovementInput() {
-      AiFsm.FixedUpdateFSM();
-      if (AiFsm.CurrentState != AiStIdle) {
+      if (_assignedTask != null) {
+        _assignedTask.FixedUpdate();
+      }
+      if (HasAITarget) {
         // Ignore player input if this Kerbal is AI controlled
+        DoAIMovement();
         return;
       }
 
@@ -132,8 +148,9 @@ namespace Stranded.MechBill {
       }
 
       // Find a path to the target if we don't already have one.
-      _pathToTarget ??= _assignedTask.Board.Pathfinder.FindPath(transform.position,
-          vessel.targetObject.GetTransform().position, TgtApproachDistance);
+      // FIXME: Need to navigate to point outside of large containers.
+      _pathToTarget ??= _pathfinder.FindPath(transform.position, vessel.targetObject.GetTransform().position,
+          TgtApproachDistance);
 
       bool approachingTarget = !GetNextPathPoint(out Vector3 nextPoint);
       if (approachingTarget) {
@@ -170,7 +187,7 @@ namespace Stranded.MechBill {
       return reachedTarget;
     }
 
-    private void GoingToTarget_OnFixedUpdate() {
+    private void DoAIMovement() {
       if (OnALadder) {
         fsm.RunEvent(On_ladderLetGo);
       }
@@ -179,11 +196,10 @@ namespace Stranded.MechBill {
         ToggleJetpack(true);
       }
 
-      vessel.targetObject = ((AttachmentTask)_assignedTask).AttachTarget; // FIXME
-
       if (MoveToTarget()) {
-        ((AttachmentTask)_assignedTask).Attach(); // FIXME
-        EnterConstructionMode();
+        OnTargetReached();
+        vessel.targetObject = null;
+        // TODO: EnterConstructionMode();
       }
     }
 
@@ -202,41 +218,6 @@ namespace Stranded.MechBill {
     protected override void SetupFSM() {
       base.SetupFSM();
       st_enteringConstruction.OnLeave += ConstructionEntered;
-
-      AiFsm = new KerbalFSM();
-
-      AiStIdle = new KFSMState("Idle");
-      AiFsm.AddState(AiStIdle);
-
-      AiStGoingToContainer = new KFSMState("En route to container");
-      AiStGoingToContainer.OnEnter = AiStGoingToContainer_OnEnter;
-      AiFsm.AddState(AiStGoingToContainer);
-
-      AiStGettingPart = new KFSMState("Getting part from container");
-      AiFsm.AddState(AiStGettingPart);
-
-      AiStGoingToTarget = new KFSMState("En route to target");
-      AiStGoingToTarget.OnFixedUpdate += GoingToTarget_OnFixedUpdate;
-      AiFsm.AddState(AiStGoingToTarget);
-
-      AiStBuilding = new KFSMState("Attaching part");
-      AiFsm.AddState(AiStBuilding);
-
-      AiStReturning = new KFSMState("Returning to base");
-      AiFsm.AddState(AiStReturning);
-
-      OnTaskAssigned = new KFSMEvent(" Task assigned");
-      OnTaskAssigned.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
-      OnTaskAssigned.GoToStateOnEvent = AiStGoingToContainer;
-      AiFsm.AddEvent(OnTaskAssigned, AiStIdle);
-
-      AiFsm.StartFSM(AiStIdle);
-    }
-
-    public void AiStGoingToContainer_OnEnter(KFSMState st) { }
-
-    public void MoveToPart(Part targetPart) {
-      //targetPart.vel
     }
 
     public void EnterConstructionMode() {

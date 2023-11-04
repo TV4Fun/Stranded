@@ -20,7 +20,7 @@ namespace Stranded.MechBill {
 
     [KSPEvent(guiActive = true, guiName = "Cancel")]
     public void Cancel() {
-      if (Task.TryGetTarget(out Task actualTask) && actualTask != null) {
+      if (Task != null && Task.TryGetTarget(out Task actualTask) && actualTask != null) {
         actualTask.Cancel();
       }
     }

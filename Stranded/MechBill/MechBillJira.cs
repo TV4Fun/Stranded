@@ -9,10 +9,8 @@ using UnityEngine;
 namespace Stranded.MechBill {
   public class MechBillJira : VesselModule {
     [SerializeField] private Queue<Task> _backlog = new();
-    [SerializeField] private HashSet<Task> _assignedTasks = new();
+    [SerializeField] private HashSet<Task> _assignedTasks = new();  // TODO: Do we need this?
     private Stack<ProtoCrewMember> _availableEngineers;
-
-    public Pathfinder Pathfinder;
 
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
@@ -24,7 +22,6 @@ namespace Stranded.MechBill {
       Part.layerMask |= 1 << Globals.GhostLayer;
       RebuildAvailableEngineers();
       GameEvents.onVesselCrewWasModified.Add(OnVesselCrewWasModified);
-      Pathfinder = vessel.GetComponent<Pathfinder>();
       SetupCollisionIgnores();
     }
 
@@ -96,12 +93,6 @@ namespace Stranded.MechBill {
 
     public void OnTaskComplete(Task task) {
       _assignedTasks.Remove(task);
-    }
-
-    private void FixedUpdate() {
-      foreach (Task task in _assignedTasks) {
-        task.FixedUpdate();
-      }
     }
 
     // Class describing how to attach a new part to an existing vessel.
