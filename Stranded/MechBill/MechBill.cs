@@ -43,9 +43,9 @@ namespace Stranded.MechBill {
         if (value != vessel.targetObject) {
           if (value != null) {
             _pathfinder = value.GetVessel().GetComponent<Pathfinder>();
+            HasAITarget = true;
           }
 
-          HasAITarget = true;
           _pathToTarget = null;
           vessel.targetObject = value;
           OnTargetAssigned();
@@ -127,7 +127,7 @@ namespace Stranded.MechBill {
 
       while (_pathToTarget.Count > 0) {
         nextPoint = _pathToTarget[_pathToTarget.Count - 1];
-        if ((nextPoint - transform.position).magnitude > TgtApproachDistance) {
+        if ((nextPoint - transform.position).magnitude > _pathfinder.GridElementSize) {
           return true;
         }
 
@@ -199,6 +199,7 @@ namespace Stranded.MechBill {
       if (MoveToTarget()) {
         OnTargetReached();
         vessel.targetObject = null;
+        HasAITarget = false;
         // TODO: EnterConstructionMode();
       }
     }

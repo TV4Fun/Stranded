@@ -79,6 +79,10 @@ namespace Stranded.MechBill {
       Cleanup();
     }
 
+    public override void FixedUpdate() {
+      Fsm.FixedUpdateFSM();
+    }
+
     public static AttachmentTask Create(MechBillJira.Attachment attachment, ModuleInventoryPart container,
         ModuleCargoPart partInContainer) {
       AttachmentTask task = CreateInstance<AttachmentTask>();
@@ -212,6 +216,7 @@ namespace Stranded.MechBill {
 
     private void StGoingToContainer_OnEnter(KFSMState st) {
       Assignee.Target = ContainerTarget;
+      Assignee.TgtApproachDistance = GameSettings.EVA_INVENTORY_RANGE;
       Assignee.OnTargetReached += new KFSMEventCallback(Fsm, OnContainerReached);
     }
 
