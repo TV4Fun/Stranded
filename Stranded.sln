@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stranded", "Stranded/Stranded.csproj", "{C81F5194-1EDB-4DCF-AB85-22907CD8A49D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stranded_KIS", "Stranded_KIS\Stranded_KIS.csproj", "{9B68ABCD-9042-4478-BEC4-14EBAC501946}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{C81F5194-1EDB-4DCF-AB85-22907CD8A49D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C81F5194-1EDB-4DCF-AB85-22907CD8A49D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C81F5194-1EDB-4DCF-AB85-22907CD8A49D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B68ABCD-9042-4478-BEC4-14EBAC501946}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B68ABCD-9042-4478-BEC4-14EBAC501946}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B68ABCD-9042-4478-BEC4-14EBAC501946}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B68ABCD-9042-4478-BEC4-14EBAC501946}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
