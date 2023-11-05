@@ -42,6 +42,8 @@ namespace Stranded.MechBill {
 
     public KFSMEvent OnTaskAssigned;
     public KFSMEvent OnContainerReached;
+    public KFSMEvent OnPartAcquired;
+    public KFSMEvent OnTargetReached;
 
     public TaskTarget ContainerTarget { get; private set; }
     public TaskTarget AttachTarget { get; private set; }
@@ -186,9 +188,12 @@ namespace Stranded.MechBill {
       Fsm.AddState(StGoingToContainer);
 
       StGettingPart = new KFSMState("Getting part from container");
+      StGettingPart.OnEnter = StGettingPart_OnEnter;
       Fsm.AddState(StGettingPart);
 
       StGoingToTarget = new KFSMState("En route to target");
+      StGoingToTarget.OnEnter = StGoingToTarget_OnEnter;
+      StGoingToTarget.OnLeave = StGoingToTarget_OnLeave;
       Fsm.AddState(StGoingToTarget);
 
       StBuilding = new KFSMState("Attaching part");
@@ -207,6 +212,16 @@ namespace Stranded.MechBill {
       OnContainerReached.GoToStateOnEvent = StGettingPart;
       Fsm.AddEvent(OnContainerReached, StGoingToContainer);
 
+      OnPartAcquired = new KFSMEvent("Part acquired");
+      OnPartAcquired.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
+      OnPartAcquired.GoToStateOnEvent = StGoingToTarget;
+      Fsm.AddEvent(OnPartAcquired, StGettingPart);
+
+      OnTargetReached = new KFSMEvent("Target reached");
+      OnTargetReached.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
+      OnTargetReached.GoToStateOnEvent = StBuilding;
+      Fsm.AddEvent(OnTargetReached, StGoingToTarget);
+
       Fsm.StartFSM(StIdle);
     }
 
@@ -222,6 +237,21 @@ namespace Stranded.MechBill {
 
     private void StGoingToContainer_OnLeave(KFSMState st) {
       Assignee.OnTargetReached -= new KFSMEventCallback(Fsm, OnContainerReached);
+    }
+
+    private void StGettingPart_OnEnter(KFSMState st) {
+      // TODO
+      Fsm.RunEvent(OnPartAcquired);
+    }
+
+    private void StGoingToTarget_OnEnter(KFSMState st) {
+      Assignee.Target = AttachTarget;
+      Assignee.TgtApproachDistance = GameSettings.EVA_CONSTRUCTION_RANGE;
+      Assignee.OnTargetReached += new KFSMEventCallback(Fsm, OnTargetReached);
+    }
+
+    private void StGoingToTarget_OnLeave(KFSMState st) {
+      Assignee.OnTargetReached -= new KFSMEventCallback(Fsm, OnTargetReached);
     }
 
     private void Init(MechBillJira.Attachment attachment, ModuleInventoryPart container,
