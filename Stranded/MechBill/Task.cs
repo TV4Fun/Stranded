@@ -9,9 +9,23 @@ namespace Stranded.MechBill {
       Cancelled
     }
 
-    public MechBillJira Board;
+    public delegate void TaskEvent(Task task);
+
+    private MechBillJira _board;
+
+    public MechBillJira Board {
+      get => _board;
+      set {
+        _board = value;
+        OnTaskCompleted = _board.OnTaskCompleted;
+        OnTaskCancelled = _board.OnTaskCancelled;
+      }
+    }
 
     private MechBill _assignee;
+
+    public TaskEvent OnTaskCompleted;
+    public TaskEvent OnTaskCancelled;
 
     public MechBill Assignee {
       get => _assignee;
@@ -28,13 +42,15 @@ namespace Stranded.MechBill {
     public virtual void Cancel() {
       Status = TaskStatus.Cancelled;
       CancelImpl();
-      Board.OnTaskCancel(this);
+      OnTaskCancelled(this);
     }
 
     protected void Complete() {
       Status = TaskStatus.Done;
-      _assignee.OnTaskCompleted();
-      Board.OnTaskComplete(this);
+      OnTaskCompleted(this);
+      _assignee.AssignedTask = null; // FIXME: Make this less hacky
+      _assignee.GoHome();
+      // _assignee.OnTaskCompleted();
     }
 
     public virtual void FixedUpdate() { }

@@ -9,10 +9,22 @@ namespace Stranded.MechBill {
     private List<Vector3> _pathToTarget = null;
     private Pathfinder _pathfinder;
 
-    public Callback OnTaskAssigned = delegate {  };
-    public Callback OnTaskCompleted = delegate {  };
-    public Callback OnTargetAssigned = delegate {  };
-    public Callback OnTargetReached = delegate {  };
+    public Callback OnTaskAssigned = delegate { };
+    public Callback OnTaskCompleted = delegate { };
+    public Callback OnTargetAssigned = delegate { };
+    public Callback OnTargetReached = delegate { };
+
+    private Part _homePart;
+    [SerializeField] private Vector3 HomeAirlock;
+    [SerializeField] private bool GoingHome = false;
+
+    public Part HomePart {
+      get => _homePart;
+      set {
+        _homePart = value;
+        HomeAirlock = _homePart.transform.InverseTransformPoint(transform.position);
+      }
+    }
 
     private static readonly FieldInfo _constructionTargetField =
         typeof(KerbalEVA).GetField("constructionTarget", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -44,8 +56,12 @@ namespace Stranded.MechBill {
           if (value != null) {
             _pathfinder = value.GetVessel().GetComponent<Pathfinder>();
             HasAITarget = true;
+          } else {
+            _pathfinder = null;
+            HasAITarget = false;
           }
 
+          GoingHome = false;
           _pathToTarget = null;
           vessel.targetObject = value;
           OnTargetAssigned();
@@ -73,7 +89,8 @@ namespace Stranded.MechBill {
       if (_assignedTask != null) {
         _assignedTask.FixedUpdate();
       }
-      if (HasAITarget) {
+
+      if (HasAITarget || GoingHome) {
         // Ignore player input if this Kerbal is AI controlled
         DoAIMovement();
         return;
@@ -149,12 +166,15 @@ namespace Stranded.MechBill {
 
       // Find a path to the target if we don't already have one.
       // FIXME: Need to navigate to point outside of large containers.
-      _pathToTarget ??= _pathfinder.FindPath(transform.position, vessel.targetObject.GetTransform().position,
+      _pathToTarget ??= _pathfinder.FindPath(transform.position,
+          GoingHome ? HomePart.transform.TransformPoint(HomeAirlock) : vessel.targetObject.GetTransform().position,
           TgtApproachDistance);
 
       bool approachingTarget = !GetNextPathPoint(out Vector3 nextPoint);
       if (approachingTarget) {
-        nextPoint = vessel.targetObject.GetTransform().position;
+        nextPoint = GoingHome
+            ? HomePart.transform.TransformPoint(HomeAirlock)
+            : vessel.targetObject.GetTransform().position; // FIXME: Make this less bespoke
       }
 
       if (Globals.ShowDebugOverlay) {
@@ -177,7 +197,10 @@ namespace Stranded.MechBill {
       Debug.Log("Target Velocity: " + vessel.targetObject.GetObtVelocity() + "; Vessel Velocity: " +
                 part.orbit.GetVel() + "; Relative Velocity: " + tgtRelativeVelocity + "; Goal Velocity: " +
                 goalVelocity);*/
-      Vector3 tgtRelativeVelocity = part.orbit.GetVel() - vessel.targetObject.GetObtVelocity();
+      Vector3 tgtRelativeVelocity = part.orbit.GetVel() -
+                                    (Vector3)(GoingHome
+                                        ? HomePart.vessel.obt_velocity
+                                        : vessel.targetObject.GetObtVelocity()); // FIXME
       Vector3 velError = goalVelocity - tgtRelativeVelocity;
       if (velError.sqrMagnitude > 1.0f) {
         velError.Normalize();
@@ -197,9 +220,9 @@ namespace Stranded.MechBill {
       }
 
       if (MoveToTarget()) {
-        OnTargetReached();
         vessel.targetObject = null;
         HasAITarget = false;
+        OnTargetReached();
         // TODO: EnterConstructionMode();
       }
     }
@@ -208,6 +231,17 @@ namespace Stranded.MechBill {
       // Replace the stock KerbalEVA class with our subclass.
       ModuleAttributes.classID = "KerbalEVA".GetHashCode();
       base.OnAwake();
+    }
+
+    public void GoHome() {
+      // TODO: Check if there are any more available tasks and only go home if there is nothing more to do.
+      // FIXME: Make this less repetitive with Target.set.
+      Target = null;
+      GoingHome = true;
+      _pathfinder = _homePart.vessel.GetComponent<Pathfinder>();
+      _pathToTarget = null;
+      TgtApproachDistance = 1.0f;
+      // TODO: Have Kerbal board ship on reaching airlock.
     }
 
     private void ConstructionEntered(KFSMState st) {

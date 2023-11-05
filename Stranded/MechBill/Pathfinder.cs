@@ -97,6 +97,7 @@ namespace Stranded.MechBill {
     }
 
     public List<Vector3> FindPath(Vector3 start, Vector3 end, float radius) {
+      // TODO: Optimize this better to reduce pathfinding lag.
       if (_gridNeedsRebuild) {
         RebuildCollisionGrid();
       }

@@ -44,6 +44,7 @@ namespace Stranded.MechBill {
     public KFSMEvent OnContainerReached;
     public KFSMEvent OnPartAcquired;
     public KFSMEvent OnTargetReached;
+    public KFSMEvent OnBuildCompleted;
 
     public TaskTarget ContainerTarget { get; private set; }
     public TaskTarget AttachTarget { get; private set; }
@@ -57,11 +58,12 @@ namespace Stranded.MechBill {
       GhostPart.SetHighlightType(Part.HighlightType.AlwaysOn);
       GhostPart.SetHighlight(true, true);
       GhostPart.SetOpacity(1.0f);
+      Assignee.Weld(GhostPart);
 
       GhostPart = null;
 
       Cleanup();
-      Complete();
+      //Complete();
     }
 
     protected override void CancelImpl() {
@@ -197,9 +199,11 @@ namespace Stranded.MechBill {
       Fsm.AddState(StGoingToTarget);
 
       StBuilding = new KFSMState("Attaching part");
+      StBuilding.OnEnter = StBuilding_OnEnter;
       Fsm.AddState(StBuilding);
 
       StReturning = new KFSMState("Returning to base");
+      StReturning.OnEnter = StReturning_OnEnter;
       Fsm.AddState(StReturning);
 
       OnTaskAssigned = new KFSMEvent("Task assigned");
@@ -221,6 +225,11 @@ namespace Stranded.MechBill {
       OnTargetReached.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
       OnTargetReached.GoToStateOnEvent = StBuilding;
       Fsm.AddEvent(OnTargetReached, StGoingToTarget);
+
+      OnBuildCompleted = new KFSMEvent("Build completed");
+      OnBuildCompleted.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
+      OnBuildCompleted.GoToStateOnEvent = StReturning;
+      Fsm.AddEvent(OnBuildCompleted, StBuilding);
 
       Fsm.StartFSM(StIdle);
     }
@@ -252,6 +261,16 @@ namespace Stranded.MechBill {
 
     private void StGoingToTarget_OnLeave(KFSMState st) {
       Assignee.OnTargetReached -= new KFSMEventCallback(Fsm, OnTargetReached);
+    }
+
+    private void StBuilding_OnEnter(KFSMState st) {
+      Attach();
+      Assignee.On_weldComplete.OnEvent += new KFSMEventCallback(Fsm, OnBuildCompleted);
+    }
+
+    private void StReturning_OnEnter(KFSMState st) {
+      // TODO
+      Complete();
     }
 
     private void Init(MechBillJira.Attachment attachment, ModuleInventoryPart container,

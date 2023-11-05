@@ -60,6 +60,7 @@ namespace Stranded.MechBill {
         Task assignedTask = _backlog.Dequeue();
 
         MechBill assignee = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
+        assignee.HomePart = assignedEngineer.KerbalRef.InPart;
         FlightGlobalsOverrides.StopNextForcedVesselSwitch(); // Prevent switching focus to newly spawned kerbal
         // mechBill.AssignedTask = assignedTask;
         assignedTask.Assignee = assignee;
@@ -81,7 +82,7 @@ namespace Stranded.MechBill {
       return task;
     }
 
-    public void OnTaskCancel(Task task) {
+    public void OnTaskCancelled(Task task) {
       if (_backlog.Contains(task)) {
         _backlog = new Queue<Task>(_backlog.Where(x => x != task));
       }
@@ -91,7 +92,7 @@ namespace Stranded.MechBill {
       }
     }
 
-    public void OnTaskComplete(Task task) {
+    public void OnTaskCompleted(Task task) {
       _assignedTasks.Remove(task);
     }
 
