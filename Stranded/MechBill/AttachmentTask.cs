@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Highlighting;
 using Stranded.Util;
 using UnityEngine;
@@ -38,7 +39,6 @@ namespace Stranded.MechBill {
     public KFSMState StGettingPart;
     public KFSMState StGoingToTarget;
     public KFSMState StBuilding;
-    public KFSMState StReturning;
 
     public KFSMEvent OnTaskAssigned;
     public KFSMEvent OnContainerReached;
@@ -48,6 +48,9 @@ namespace Stranded.MechBill {
 
     public TaskTarget ContainerTarget { get; private set; }
     public TaskTarget AttachTarget { get; private set; }
+
+    private static readonly FieldInfo _lastAttachedPart =
+        typeof(EVAConstructionModeEditor).GetField("lastAttachedPart", BindingFlags.NonPublic | BindingFlags.Instance);
 
     public void Attach() {
       GhostPart.gameObject.SetLayerRecursive(0, true);
@@ -60,9 +63,9 @@ namespace Stranded.MechBill {
       GhostPart.SetOpacity(1.0f);
       Assignee.Weld(GhostPart);
 
-      GhostPart = null;
+      //GhostPart = null;
 
-      Cleanup();
+      //Cleanup();
       //Complete();
     }
 
@@ -178,7 +181,6 @@ namespace Stranded.MechBill {
 
     // ReSharper disable once InconsistentNaming
     private void SetupFSM() {
-
       Fsm = new KerbalFSM();
 
       StIdle = new KFSMState("Idle");
@@ -200,11 +202,8 @@ namespace Stranded.MechBill {
 
       StBuilding = new KFSMState("Attaching part");
       StBuilding.OnEnter = StBuilding_OnEnter;
+      StBuilding.OnLeave = StBuilding_OnLeave;
       Fsm.AddState(StBuilding);
-
-      StReturning = new KFSMState("Returning to base");
-      StReturning.OnEnter = StReturning_OnEnter;
-      Fsm.AddState(StReturning);
 
       OnTaskAssigned = new KFSMEvent("Task assigned");
       OnTaskAssigned.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
@@ -228,7 +227,7 @@ namespace Stranded.MechBill {
 
       OnBuildCompleted = new KFSMEvent("Build completed");
       OnBuildCompleted.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
-      OnBuildCompleted.GoToStateOnEvent = StReturning;
+      OnBuildCompleted.GoToStateOnEvent = StIdle;
       Fsm.AddEvent(OnBuildCompleted, StBuilding);
 
       Fsm.StartFSM(StIdle);
@@ -265,12 +264,25 @@ namespace Stranded.MechBill {
 
     private void StBuilding_OnEnter(KFSMState st) {
       Attach();
-      Assignee.On_weldComplete.OnEvent += new KFSMEventCallback(Fsm, OnBuildCompleted);
+      Assignee.OnBuildCompleted += new KFSMEventCallback(Fsm, OnBuildCompleted);
+      Assignee.On_weldHdgAcquired.OnEvent += UpdateLastAttachedPart;
     }
 
-    private void StReturning_OnEnter(KFSMState st) {
-      // TODO
+    private void StBuilding_OnLeave(KFSMState st) {
+      Assignee.OnBuildCompleted -= new KFSMEventCallback(Fsm, OnBuildCompleted);
+      Assignee.On_weldHdgAcquired.OnEvent -= UpdateLastAttachedPart;
+      GhostPart = null;
       Complete();
+    }
+
+    private void UpdateLastAttachedPart() {
+      // FIXME: Make this less hacky
+      _lastAttachedPart.SetValue(EVAConstructionModeController.Instance.evaEditor, GhostPart);
+    }
+
+    protected override void Complete() {
+      Cleanup();
+      base.Complete();
     }
 
     private void Init(MechBillJira.Attachment attachment, ModuleInventoryPart container,

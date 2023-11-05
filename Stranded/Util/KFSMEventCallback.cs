@@ -39,5 +39,9 @@ namespace Stranded.Util {
     public static implicit operator KFSMCallback(KFSMEventCallback callback) {
       return callback.Invoke;
     }
+
+    public static implicit operator KFSMStateChange(KFSMEventCallback callback) {
+      return delegate { callback.Invoke(); };
+    }
   }
 }

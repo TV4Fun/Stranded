@@ -45,7 +45,7 @@ namespace Stranded.MechBill {
       OnTaskCancelled(this);
     }
 
-    protected void Complete() {
+    protected virtual void Complete() {
       Status = TaskStatus.Done;
       OnTaskCompleted(this);
       _assignee.AssignedTask = null; // FIXME: Make this less hacky

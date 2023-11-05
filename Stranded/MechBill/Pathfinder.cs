@@ -157,6 +157,7 @@ namespace Stranded.MechBill {
                   do {
                     Vector3Int point = new Vector3Int(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
                     if (Globals.ShowDebugOverlay) {
+                      // FIXME: Need to reset particle colors after path is finished with.
                       _debugParticles[FlattenGrid(point)].startColor = Color.white;
                       _debugParticleSystem.SetParticles(_debugParticles, _debugParticles.Length);
                     }

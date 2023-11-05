@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using JetBrains.Annotations;
+using Stranded.Util;
 using UnityEngine;
 
 namespace Stranded.MechBill {
@@ -13,6 +15,7 @@ namespace Stranded.MechBill {
     public Callback OnTaskCompleted = delegate { };
     public Callback OnTargetAssigned = delegate { };
     public Callback OnTargetReached = delegate { };
+    public Callback OnBuildCompleted = delegate { };
 
     private Part _homePart;
     [SerializeField] private Vector3 HomeAirlock;
@@ -244,22 +247,43 @@ namespace Stranded.MechBill {
       // TODO: Have Kerbal board ship on reaching airlock.
     }
 
-    private void ConstructionEntered(KFSMState st) {
-      constructionTarget = ((AttachmentTask)_assignedTask).GhostPart; // FIXME
+ /*   public void StartWelding(KFSMState st) {
       fsm.RunEvent(On_weldStart);
-      // AssignedTask = null;  // TODO: Mark task as complete and return to vessel.
-    }
+    }*/
 
-    protected override void SetupFSM() {
+ /*   protected override void SetupFSM() {
       base.SetupFSM();
-      st_enteringConstruction.OnLeave += ConstructionEntered;
+      //st_enteringConstruction.OnLeave += StartWelding; //new KFSMEventCallback(fsm, On_weldStart);
+    }*/
+
+    private void ExitConstructionMode() {
+      InConstructionMode = false;
+      if (!OnALadder) {
+        //fsm.RunEvent(On_constructionModeExit);
+        InputLockManager.RemoveControlLock("WeldLock_" + vessel.id);
+      }
     }
 
-    public void EnterConstructionMode() {
+    private void Start() {
+      OnBuildCompleted = ResetFsm;
+    }
+
+    private void ResetFsm() {
+      On_constructionModeTrigger_fl_Complete.GoToStateOnEvent = st_idle_fl;
+      On_weldComplete.OnEvent -= ExitConstructionMode;
+      On_weldComplete.GoToStateOnEvent = st_idle_gr;
+      st_exitingConstruction.OnLeave -= delegate { OnBuildCompleted(); };
+    }
+
+    public new void Weld(Part target) {
+      // Enter construction mode, then weld.
       InConstructionMode = true;
-      if (!OnALadder) {
-        fsm.RunEvent(On_constructionModeEnter);
-      }
+      constructionTarget = target;
+      On_constructionModeTrigger_fl_Complete.GoToStateOnEvent = st_weldAcquireHeading;
+      On_weldComplete.OnEvent += ExitConstructionMode;
+      On_weldComplete.GoToStateOnEvent = st_exitingConstruction;
+      st_exitingConstruction.OnLeave += delegate { OnBuildCompleted(); };
+      fsm.RunEvent(On_constructionModeEnter);
     }
   }
 }
