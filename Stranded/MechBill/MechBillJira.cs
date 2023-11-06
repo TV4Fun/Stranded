@@ -59,6 +59,7 @@ namespace Stranded.MechBill {
         ProtoCrewMember assignedEngineer = _availableEngineers.Pop();
         Task assignedTask = _backlog.Dequeue();
 
+        // FIXME: Crew display shouldn't switch to newly spawned kerbal
         MechBill assignee = (MechBill)FlightEVA.SpawnEVA(assignedEngineer.KerbalRef);
         assignee.HomePart = assignedEngineer.KerbalRef.InPart;
         FlightGlobalsOverrides.StopNextForcedVesselSwitch(); // Prevent switching focus to newly spawned kerbal

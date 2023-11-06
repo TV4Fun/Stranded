@@ -223,10 +223,16 @@ namespace Stranded.MechBill {
       }
 
       if (MoveToTarget()) {
-        vessel.targetObject = null;
-        HasAITarget = false;
-        OnTargetReached();
-        // TODO: EnterConstructionMode();
+        if (GoingHome) {
+          // TODO: Better separate this logic from move to target logic.
+          // TODO: Check conditions to board and handle coses where we can't board.
+          BoardPart(HomePart);
+          // FIXME: Need to get crew display in the corner to update properly.
+        } else {
+          vessel.targetObject = null;
+          HasAITarget = false;
+          OnTargetReached();
+        }
       }
     }
 
