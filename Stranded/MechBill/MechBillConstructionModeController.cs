@@ -11,6 +11,8 @@ namespace Stranded.MechBill {
   [HarmonyPatch(typeof(EVAConstructionModeController))]
   // ReSharper disable InconsistentNaming
   public static class MechBillConstructionModeController {
+    #region Reflection
+
     private static readonly FieldInfo _loadedModuleInventoryPart = typeof(EVAConstructionModeController)
         .GetField("loadedModuleInventoryPart", BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -35,6 +37,7 @@ namespace Stranded.MechBill {
     private static readonly FieldInfo _displayedInventoryModule = _inventoryDisplayItem.GetField("inventoryModule");
     private static readonly FieldInfo _displayedInventoryUIObject = _inventoryDisplayItem.GetField("uiObject");
     private static readonly FieldInfo _displayedInventoryUIInventory = _inventoryDisplayItem.GetField("uiInventory");
+    #endregion
 
     [UsedImplicitly]
     [HarmonyPrefix]

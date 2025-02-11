@@ -1,25 +1,63 @@
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 using JetBrains.Annotations;
-using Stranded.Util;
 using UnityEngine;
 
 namespace Stranded.MechBill {
+  /// <summary>
+  ///   Manages automated Kerbal EVA (Extra-Vehicular Activity) behavior.
+  /// </summary>
+  /// <remarks>
+  ///   This class extends the base KerbalEVA functionality with AI capabilities including:
+  ///   - Automated movement and navigation
+  ///   - Construction tasks
+  ///   - Pathfinding
+  ///   - State management
+  ///   The class uses a callback system to handle various events like:
+  ///   - Task assignment/completion
+  ///   - Movement control
+  ///   - Target reaching
+  ///   - Construction operations
+  /// </remarks>
   public class MechBill : KerbalEVA {
-    private Task _assignedTask = null;
-    private List<Vector3> _pathToTarget = null;
-    private Pathfinder _pathfinder;
+    public delegate void ControlCallback(MechBill eva);
 
-    public Callback OnTaskAssigned = delegate { };
-    public Callback OnTaskCompleted = delegate { };
-    public Callback OnTargetAssigned = delegate { };
-    public Callback OnTargetReached = delegate { };
-    public Callback OnBuildCompleted = delegate { };
+    private static readonly FieldInfo _constructionTargetField =
+      typeof(KerbalEVA).GetField("constructionTarget", BindingFlags.NonPublic | BindingFlags.Instance);
+
+    [SerializeField] private Vector3 HomeAirlock;
+    [SerializeField] private bool GoingHome;
+
+    // Debug visualization of control states after automation applied.
+    [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control Linear", isPersistant = false)]
+    public Vector3 CtrlLinear;
+
+    [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control PYR", isPersistant = false)]
+    public Vector3 CtrlPyr;
+
+    public float ApproachSpeedLimit = 1.0f;
+    public float TgtApproachDistance = 1.0f;
+    private Task _assignedTask;
+
+    private GameObject _debugSphere;
 
     private Part _homePart;
-    [SerializeField] private Vector3 HomeAirlock;
-    [SerializeField] private bool GoingHome = false;
+    private Pathfinder _pathfinder;
+    private List<Vector3> _pathToTarget;
+    public Callback OnBuildCompleted = delegate { };
+
+    // Callbacks for custom automation.
+    public FlightInputCallback OnFlyByWire = st => { };
+    public Callback OnTargetAssigned = delegate { };
+    public Callback OnTargetReached = delegate { };
+
+    /// <summary>
+    ///   Called when a new task is assigned to the Kerbal
+    /// </summary>
+    public Callback OnTaskAssigned = delegate { };
+
+    public Callback OnTaskCompleted = delegate { };
+    public ControlCallback OnWalkByWire = eva => { };
 
     public Part HomePart {
       get => _homePart;
@@ -29,18 +67,13 @@ namespace Stranded.MechBill {
       }
     }
 
-    private static readonly FieldInfo _constructionTargetField =
-        typeof(KerbalEVA).GetField("constructionTarget", BindingFlags.NonPublic | BindingFlags.Instance);
-
     // ReSharper disable once InconsistentNaming
     private Part constructionTarget {
       get => (Part)_constructionTargetField.GetValue(this);
       set => _constructionTargetField.SetValue(this, value);
     }
 
-    public bool HasAITarget { get; private set; } = false;
-
-    private GameObject _debugSphere;
+    public bool HasAITarget { get; private set; }
 
     public Task AssignedTask {
       get => _assignedTask;
@@ -72,21 +105,9 @@ namespace Stranded.MechBill {
       }
     }
 
-    public delegate void ControlCallback(MechBill eva);
-
-    // Debug visualization of control states after automation applied.
-    [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control Linear", isPersistant = false)]
-    public Vector3 CtrlLinear;
-
-    [UsedImplicitly] [KSPField(guiActive = true, guiName = "Control PYR", isPersistant = false)]
-    public Vector3 CtrlPyr;
-
-    // Callbacks for custom automation.
-    public FlightInputCallback OnFlyByWire = st => { };
-    public ControlCallback OnWalkByWire = eva => { };
-
-    public float ApproachSpeedLimit = 1.0f;
-    public float TgtApproachDistance = 1.0f;
+    private void Start() {
+      OnBuildCompleted = ResetFsm;
+    }
 
     protected override void HandleMovementInput() {
       if (_assignedTask != null) {
@@ -119,7 +140,7 @@ namespace Stranded.MechBill {
 
       xyz = ctrlState.GetXYZ();
       pyr = new Vector3(ctrlState.pitch, ctrlState.yaw,
-          ctrlState.roll); // For some reason, GetPYR() switches around y and z.
+        ctrlState.roll); // For some reason, GetPYR() switches around y and z.
 
       packTgtRPos = localToWorld * xyz;
 
@@ -170,14 +191,14 @@ namespace Stranded.MechBill {
       // Find a path to the target if we don't already have one.
       // FIXME: Need to navigate to point outside of large containers.
       _pathToTarget ??= _pathfinder.FindPath(transform.position,
-          GoingHome ? HomePart.transform.TransformPoint(HomeAirlock) : vessel.targetObject.GetTransform().position,
-          TgtApproachDistance);
+        GoingHome ? HomePart.transform.TransformPoint(HomeAirlock) : vessel.targetObject.GetTransform().position,
+        TgtApproachDistance);
 
       bool approachingTarget = !GetNextPathPoint(out Vector3 nextPoint);
       if (approachingTarget) {
         nextPoint = GoingHome
-            ? HomePart.transform.TransformPoint(HomeAirlock)
-            : vessel.targetObject.GetTransform().position; // FIXME: Make this less bespoke
+          ? HomePart.transform.TransformPoint(HomeAirlock)
+          : vessel.targetObject.GetTransform().position; // FIXME: Make this less bespoke
       }
 
       if (Globals.ShowDebugOverlay) {
@@ -202,8 +223,8 @@ namespace Stranded.MechBill {
                 goalVelocity);*/
       Vector3 tgtRelativeVelocity = part.orbit.GetVel() -
                                     (Vector3)(GoingHome
-                                        ? HomePart.vessel.obt_velocity
-                                        : vessel.targetObject.GetObtVelocity()); // FIXME
+                                      ? HomePart.vessel.obt_velocity
+                                      : vessel.targetObject.GetObtVelocity()); // FIXME
       Vector3 velError = goalVelocity - tgtRelativeVelocity;
       if (velError.sqrMagnitude > 1.0f) {
         velError.Normalize();
@@ -225,7 +246,7 @@ namespace Stranded.MechBill {
       if (MoveToTarget()) {
         if (GoingHome) {
           // TODO: Better separate this logic from move to target logic.
-          // TODO: Check conditions to board and handle coses where we can't board.
+          // TODO: Check conditions to board and handle cases where we can't board.
           BoardPart(HomePart);
           // FIXME: Need to get crew display in the corner to update properly.
         } else {
@@ -242,6 +263,13 @@ namespace Stranded.MechBill {
       base.OnAwake();
     }
 
+    /// <summary>
+    ///   Navigates the Kerbal back to their home part
+    /// </summary>
+    /// <remarks>
+    ///   This method will clear current targets, set the going home state,
+    ///   and initialize pathfinding to the home airlock
+    /// </remarks>
     public void GoHome() {
       // TODO: Check if there are any more available tasks and only go home if there is nothing more to do.
       // FIXME: Make this less repetitive with Target.set.
@@ -253,14 +281,14 @@ namespace Stranded.MechBill {
       // TODO: Have Kerbal board ship on reaching airlock.
     }
 
- /*   public void StartWelding(KFSMState st) {
-      fsm.RunEvent(On_weldStart);
-    }*/
+    /*   public void StartWelding(KFSMState st) {
+         fsm.RunEvent(On_weldStart);
+       }*/
 
- /*   protected override void SetupFSM() {
-      base.SetupFSM();
-      //st_enteringConstruction.OnLeave += StartWelding; //new KFSMEventCallback(fsm, On_weldStart);
-    }*/
+    /*   protected override void SetupFSM() {
+         base.SetupFSM();
+         //st_enteringConstruction.OnLeave += StartWelding; //new KFSMEventCallback(fsm, On_weldStart);
+       }*/
 
     private void ExitConstructionMode() {
       InConstructionMode = false;
@@ -268,10 +296,6 @@ namespace Stranded.MechBill {
         //fsm.RunEvent(On_constructionModeExit);
         InputLockManager.RemoveControlLock("WeldLock_" + vessel.id);
       }
-    }
-
-    private void Start() {
-      OnBuildCompleted = ResetFsm;
     }
 
     private void ResetFsm() {

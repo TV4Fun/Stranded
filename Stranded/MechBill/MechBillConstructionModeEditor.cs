@@ -4,22 +4,26 @@ using HarmonyLib;
 using JetBrains.Annotations;
 
 namespace Stranded.MechBill {
+  /// <summary>
+  ///   Patches KSP's EVAConstructionModeEditor to enable automated construction tasks
+  /// </summary>
   [HarmonyPatch(typeof(EVAConstructionModeEditor))]
   // ReSharper disable InconsistentNaming
   public static class MechBillConstructionModeEditor {
-    private class SoDoneWithThis : Exception { }
-
     private static VesselType _previousVesselType;
     private static float _previousEvaConstructionRange;
 
     private static readonly FieldInfo _moduleInventoryPart =
-        typeof(UIPartActionInventorySlot).GetField("moduleInventoryPart",
-            BindingFlags.NonPublic | BindingFlags.Instance);
+      typeof(UIPartActionInventorySlot).GetField("moduleInventoryPart",
+        BindingFlags.NonPublic | BindingFlags.Instance);
 
     private static readonly FieldInfo _cargoPartRef =
-        typeof(UIPartActionInventorySlot).GetField("cargoPartRef",
-            BindingFlags.NonPublic | BindingFlags.Instance);
+      typeof(UIPartActionInventorySlot).GetField("cargoPartRef",
+        BindingFlags.NonPublic | BindingFlags.Instance);
 
+    /// <summary>
+    ///   Patches the part placement position update to enable construction from any vessel
+    /// </summary>
     [UsedImplicitly]
     [HarmonyPrefix]
     [HarmonyPatch("UpdatePartPlacementPosition")]
@@ -29,9 +33,9 @@ namespace Stranded.MechBill {
 
       if (!FlightGlobals.ActiveVessel.isEVA) {
         GameSettings.EVA_CONSTRUCTION_RANGE =
-            float.MaxValue; // Allow construction anywhere on the vessel TODO: Maybe consider limiting range for ground attachments.
+          float.MaxValue; // Allow construction anywhere on the vessel TODO: Maybe consider limiting range for ground attachments.
         FlightGlobals.ActiveVessel.vesselType =
-            VesselType.EVA; // Have to set vessel type to EVA for construction UI to show up.
+          VesselType.EVA; // Have to set vessel type to EVA for construction UI to show up.
       }
 
       return true;
@@ -45,16 +49,12 @@ namespace Stranded.MechBill {
       FlightGlobals.ActiveVessel.vesselType = _previousVesselType;
     }
 
-    /*[UsedImplicitly]
-    [HarmonyPrefix]
-    [HarmonyPatch("AttachInput")]
-    public static bool AttachInput() {
-        if (FlightGlobals.ActiveVessel.isEVA || !Input.GetMouseButtonUp(0)) return true;
-
-        // TODO: Add a task to MechBillJira to place this part
-        return false;
-    }*/
-
+    /// <summary>
+    ///   Harmony finalizer that handles construction interruption.
+    ///   When a SoDoneWithThis exception is thrown, it indicates that we've successfully
+    ///   created a ghost part and want to prevent KSP's normal construction flow from continuing.
+    ///   We catch and swallow this specific exception while letting any other exceptions propagate.
+    /// </summary>
     [UsedImplicitly]
     [HarmonyFinalizer]
     [HarmonyPatch("Update")]
@@ -62,6 +62,12 @@ namespace Stranded.MechBill {
       return __exception is SoDoneWithThis ? null : __exception;
     }
 
+    /// <summary>
+    ///   Patches KSP's AttachPart to create ghost parts for automated construction.
+    ///   Uses an exception to interrupt KSP's normal attachment flow while maintaining
+    ///   necessary setup logic. This approach was chosen due to the tightly coupled nature
+    ///   of KSP's attachment system and the need to defer actual attachment until later.
+    /// </summary>
     [UsedImplicitly]
     [HarmonyPrefix]
     [HarmonyPatch("AttachPart")]
@@ -95,5 +101,17 @@ namespace Stranded.MechBill {
       // Suppress normal post-attach updates that don't apply to a ghost part.
       throw new SoDoneWithThis();
     }
+
+    private class SoDoneWithThis : Exception { }
+
+    /*[UsedImplicitly]
+    [HarmonyPrefix]
+    [HarmonyPatch("AttachInput")]
+    public static bool AttachInput() {
+        if (FlightGlobals.ActiveVessel.isEVA || !Input.GetMouseButtonUp(0)) return true;
+
+        // TODO: Add a task to MechBillJira to place this part
+        return false;
+    }*/
   }
 }

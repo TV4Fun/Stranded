@@ -7,10 +7,17 @@ using KSP.UI.Screens;
 using UnityEngine;
 
 namespace Stranded.MechBill {
+  /// <summary>
+  ///   Manages construction tasks and engineer assignments for a vessel
+  /// </summary>
   public class MechBillJira : VesselModule {
-    [SerializeField] private Queue<Task> _backlog = new();
-    [SerializeField] private HashSet<Task> _assignedTasks = new();  // TODO: Do we need this?
+    [SerializeField] private readonly HashSet<Task> _assignedTasks = new(); // TODO: Do we need this?
     private Stack<ProtoCrewMember> _availableEngineers;
+    [SerializeField] private Queue<Task> _backlog = new();
+
+    private void Update() {
+      AssignTasks();
+    }
 
     private void OnDestroy() {
       GameEvents.OnEVAConstructionMode.Remove(OnEVAConstructionMode);
@@ -23,10 +30,6 @@ namespace Stranded.MechBill {
       RebuildAvailableEngineers();
       GameEvents.onVesselCrewWasModified.Add(OnVesselCrewWasModified);
       SetupCollisionIgnores();
-    }
-
-    private void Update() {
-      AssignTasks();
     }
 
     private static void SetupCollisionIgnores() {
@@ -70,7 +73,7 @@ namespace Stranded.MechBill {
     }
 
     public AttachmentTask AttachPart(Attachment attachment, ModuleInventoryPart container,
-        ModuleCargoPart partInContainer) {
+      ModuleCargoPart partInContainer) {
       if (attachment == null || attachment.PotentialParent == null) return null;
       AttachmentTask task = AttachmentTask.Create(attachment, container, partInContainer);
       task.Board = this;
@@ -100,7 +103,7 @@ namespace Stranded.MechBill {
     // Class describing how to attach a new part to an existing vessel.
     public class Attachment {
       private static readonly Type _kspAttachment =
-          Assembly.GetAssembly(typeof(EVAConstructionModeEditor)).GetType("Attachment");
+        Assembly.GetAssembly(typeof(EVAConstructionModeEditor)).GetType("Attachment");
 
       private static readonly FieldInfo _possible = _kspAttachment.GetField("possible");
 
@@ -114,14 +117,14 @@ namespace Stranded.MechBill {
       private static readonly FieldInfo _rotation = _kspAttachment.GetField("rotation");
 
       public Part Caller; // Part to be attached
-      public Part PotentialParent; // Part we attaching to
       public AttachNode CallerPartNode; // Attachment point on the part to be attached
-      public AttachNode OtherPartNode; // Attachment point on the part being attached to
 
       public AttachModes Mode; // Attach on stack node or on surface
+      public AttachNode OtherPartNode; // Attachment point on the part being attached to
       public Vector3 Position;
 
       public bool Possible;
+      public Part PotentialParent; // Part we attaching to
       public Quaternion Rotation;
 
       // public bool Collision;  // Appears to be unsued
