@@ -201,7 +201,7 @@ namespace Stranded.MechBill {
           : vessel.targetObject.GetTransform().position; // FIXME: Make this less bespoke
       }
 
-      if (Globals.ShowDebugOverlay) {
+      if (Globals.ShowDebugOverlay && _debugSphere != null) {
         _debugSphere.transform.position = nextPoint;
       }
 

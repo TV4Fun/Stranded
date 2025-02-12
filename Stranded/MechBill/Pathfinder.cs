@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Stranded.Util;
 using UnityEngine;
 
 namespace Stranded.MechBill {
   public class Pathfinder : VesselModule {
     private bool _gridNeedsRebuild = true;
+    private static readonly float[] _sqrts = { 1.0f, Mathf.Sqrt(2.0f), Mathf.Sqrt(3.0f) };
+    private bool _failedPathfinding = false;
 
     private int _gridSize = 80;
 
@@ -28,7 +31,9 @@ namespace Stranded.MechBill {
       // _gridExtents = vessel.vesselSize + Vector3.one * 2f;
       //_gridElementSize = _gridExtents / _gridSize;
       //_invGridElementSize = new Vector3(1f / _gridElementSize.x, 1f / _gridElementSize.y, 1f / _gridElementSize.z)
-      GridElementSize = (extents.magnitude + 2f) / _gridSize;
+      //GridElementSize = (extents.magnitude + 5f) / _gridSize;
+      GridElementSize = 0.4f;
+      GridSize = (int)((extents.magnitude + 5f) / GridElementSize);
     }
 
     public float GridElementSize {
@@ -58,6 +63,7 @@ namespace Stranded.MechBill {
         _debugParticleSystem = _debugOverlay.AddComponent<ParticleSystem>();
       } else {
         _debugParticleSystem = _debugOverlay.GetComponent<ParticleSystem>();
+        return;
       }
 
       ParticleSystem.MainModule main = _debugParticleSystem.main;
@@ -97,6 +103,7 @@ namespace Stranded.MechBill {
     }
 
     public List<Vector3> FindPath(Vector3 start, Vector3 end, float radius) {
+      if (_failedPathfinding) return null;
       // TODO: Optimize this better to reduce pathfinding lag.
       if (_gridNeedsRebuild) {
         RebuildCollisionGrid();
@@ -127,8 +134,6 @@ namespace Stranded.MechBill {
       var openSet = new PriorityQueue<ValueTuple<int, int, int>, float>();
       openSet.Add((startPoint.x, startPoint.y, startPoint.z), 0.0f);
 
-      float[] sqrts = { 1.0f, Mathf.Sqrt(2.0f), Mathf.Sqrt(3.0f) };
-
       while (!openSet.IsEmpty()) {
         PriorityQueue<(int, int, int), float>.MutableKeyValuePair nextNode = openSet.Dequeue();
         ValueTuple<int, int, int> otherPoint;
@@ -147,7 +152,7 @@ namespace Stranded.MechBill {
                 int intDistance = Math.Abs(otherPoint.Item1 - nextNode.Key.Item1) +
                                   Math.Abs(otherPoint.Item2 - nextNode.Key.Item2) +
                                   Math.Abs(otherPoint.Item3 - nextNode.Key.Item3);
-                float distance = sqrts[intDistance - 1];
+                float distance = _sqrts[intDistance - 1];
                 int endDistance = Sqr(otherPoint.Item1 - endX) +
                                   Sqr(otherPoint.Item2 - endY) +
                                   Sqr(otherPoint.Item3 - endZ);
@@ -155,7 +160,7 @@ namespace Stranded.MechBill {
                   List<Vector3> result = new();
                   bool hasNext;
                   do {
-                    Vector3Int point = new Vector3Int(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
+                    Vector3Int point = new(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
                     if (Globals.ShowDebugOverlay) {
                       // FIXME: Need to reset particle colors after path is finished with.
                       _debugParticles[FlattenGrid(point)].startColor = Color.white;
@@ -169,7 +174,7 @@ namespace Stranded.MechBill {
                   return result;
                 }
 
-                openSet.Add(otherPoint, nextNode.Value + distance);
+                openSet.Add(otherPoint, nextNode.Value + distance + Mathf.Sqrt(endDistance));
                 visited[otherPoint.Item1, otherPoint.Item2, otherPoint.Item3] = true;
               }
             }
@@ -177,6 +182,10 @@ namespace Stranded.MechBill {
         }
       }
 
+      // Pathfinding failed. We should probably do something about that.
+      Globals.ShowDebugOverlay = true;
+      CreateDebugOverlay();
+      _failedPathfinding = true;
       return null;
     }
 
@@ -188,7 +197,14 @@ namespace Stranded.MechBill {
       for (point.x = 0; point.x < _gridSize; ++point.x) {
         for (point.y = 0; point.y < _gridSize; ++point.y) {
           for (point.z = 0; point.z < _gridSize; ++point.z) {
-            _isObstructed[point.x, point.y, point.z] = Physics.CheckBox(GridToWorld(point), halfExtents);
+            Vector3 worldPos = GridToWorld(point);
+            bool isBlocked = Physics.CheckBox(worldPos, halfExtents, transform.rotation, Part.layerMask);
+            /*if (isBlocked) {
+              // Add debug to see what's being hit
+              Collider[] hits = Physics.OverlapBox(worldPos, halfExtents);
+              Debug.Log($"Grid point {point} (world pos {worldPos}) is blocked by: {string.Join(", ", hits.Select(h => $"{h.gameObject.name} at {h.transform.position}"))}");
+            }*/
+            _isObstructed[point.x, point.y, point.z] = isBlocked;
           }
         }
       }
