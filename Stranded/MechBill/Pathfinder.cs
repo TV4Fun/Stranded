@@ -1,40 +1,30 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Stranded.Util;
 using UnityEngine;
 
 namespace Stranded.MechBill {
   public class Pathfinder : VesselModule {
-    private bool _gridNeedsRebuild = true;
     private static readonly float[] _sqrts = { 1.0f, Mathf.Sqrt(2.0f), Mathf.Sqrt(3.0f) };
-    private bool _failedPathfinding = false;
 
-    private int _gridSize = 80;
+    private static readonly int _mode = Shader.PropertyToID("_Mode");
+    private Bounds _bounds;
+
+    private GameObject _debugOverlay;
+    private ParticleSystem.Particle[] _debugParticles;
+    private ParticleSystem _debugParticleSystem;
+    private bool _failedPathfinding;
+    private float _gridElementPadding = 0.5f;
 
     //private Vector3 _gridExtents;
     //private readonly Vector3 _gridElementSize;
     //private readonly Vector3 _invGridElementSize;
     private float _gridElementSize;
+    private bool _gridNeedsRebuild = true;
+
+    private Vector3Int _gridSize;
 
     private bool[,,] _isObstructed;
-
-    private GameObject _debugOverlay;
-
-    private static readonly int _mode = Shader.PropertyToID("_Mode");
-    private ParticleSystem.Particle[] _debugParticles;
-    private ParticleSystem _debugParticleSystem;
-
-    // TODO: Subscribe to OnVesselStandardModification
-    protected override void OnStart() {
-      Vector3 extents = vessel.vesselSize;
-      // _gridExtents = vessel.vesselSize + Vector3.one * 2f;
-      //_gridElementSize = _gridExtents / _gridSize;
-      //_invGridElementSize = new Vector3(1f / _gridElementSize.x, 1f / _gridElementSize.y, 1f / _gridElementSize.z)
-      //GridElementSize = (extents.magnitude + 5f) / _gridSize;
-      GridElementSize = 0.4f;
-      GridSize = (int)((extents.magnitude + 5f) / GridElementSize);
-    }
 
     public float GridElementSize {
       get => _gridElementSize;
@@ -44,7 +34,7 @@ namespace Stranded.MechBill {
       }
     }
 
-    public int GridSize {
+    public Vector3Int GridSize {
       get => _gridSize;
       set {
         _gridSize = value;
@@ -52,14 +42,90 @@ namespace Stranded.MechBill {
       }
     }
 
-    private int Sqr(int x) => x * x;
+    // TODO: Subscribe to OnVesselStandardModification
+    protected override void OnStart() {
+      _bounds = vessel.CalculateCraftBounds();
+      // Add padding to ensure we have room to move around the outside if we need to.
+      _bounds.Expand(5f);
+      //Bounds globalBounds = gameObject.GetColliderBounds();
+      //_bounds = new Bounds(transform.InverseTransformPoint(globalBounds.center), transform.InverseTransformVector(globalBounds.size));
+      Debug.Log("Bounds are " + _bounds + ", position is " + transform.position);
+      // _gridExtents = vessel.vesselSize + Vector3.one * 2f;
+      //_gridElementSize = _gridExtents / _gridSize;
+      //_invGridElementSize = new Vector3(1f / _gridElementSize.x, 1f / _gridElementSize.y, 1f / _gridElementSize.z)
+      //GridElementSize = (extents.magnitude + 5f) / _gridSize;
+      GridElementSize = 0.2f;
+      GridSize = Vector3Int.RoundToInt(_bounds.size / GridElementSize);
+    }
 
-    private float Sqr(float x) => x * x;
+    private int Sqr(int x) {
+      return x * x;
+    }
+
+    private float Sqr(float x) {
+      return x * x;
+    }
+
+   /* private void Update() {
+      // Visualize the vessel axes and bounds axes
+      GLUtils.DrawLine(transform.position, transform.position + transform.forward * 5f, Color.blue, 0f, false);
+      Debug.DrawLine(transform.position, transform.position + transform.up * 5f, Color.green, 0f, false);
+      Debug.DrawLine(transform.position, transform.position + transform.right * 5f, Color.red, 0f, false);
+    
+      Vector3 center = transform.TransformPoint(_bounds.center);
+      Vector3 extents = transform.TransformVector(_bounds.extents);
+      Debug.DrawLine(center, center + extents, Color.yellow, 0f, false);
+      Debug.DrawLine(center, center - extents, Color.magenta, 0f, false);
+    }*/
+   
+   private GameObject _debugLines;
+   private void CreateDebugLines() {
+     if (_debugLines == null) {
+       _debugLines = new GameObject("Debug Lines");
+       _debugLines.transform.SetParent(transform, false);
+
+       // We need 5 lines total
+       for (int i = 0; i < 5; i++) {
+         GameObject line = new ($"Line {i}");
+         line.transform.SetParent(_debugLines.transform);
+         LineRenderer renderer = line.AddComponent<LineRenderer>();
+         renderer.useWorldSpace = false;
+         renderer.startWidth = 0.1f;
+         renderer.endWidth = 0.1f;
+         renderer.material = new Material(Shader.Find("Particles/Standard Unlit"));
+         renderer.SetPositions(new[] { Vector3.zero, Vector3.zero }); // Will update these later
+       }
+     }
+
+     // Update line positions
+     LineRenderer[] lines = _debugLines.GetComponentsInChildren<LineRenderer>();
+    
+     // Vessel axes - in local space since the lines are children of transform
+     lines[0].startColor = lines[0].endColor = Color.blue;
+     lines[0].SetPosition(0, Vector3.zero);
+     lines[0].SetPosition(1, Vector3.forward * 5f);
+    
+     lines[1].startColor = lines[1].endColor = Color.green;
+     lines[1].SetPosition(0, Vector3.zero);
+     lines[1].SetPosition(1, Vector3.up * 5f);
+    
+     lines[2].startColor = lines[2].endColor = Color.red;
+     lines[2].SetPosition(0, Vector3.zero);
+     lines[2].SetPosition(1, Vector3.right * 5f);
+    
+     lines[3].startColor = lines[3].endColor = Color.yellow;
+     lines[3].SetPosition(0, _bounds.center);
+     lines[3].SetPosition(1, _bounds.max);
+    
+     lines[4].startColor = lines[4].endColor = Color.magenta;
+     lines[4].SetPosition(0, _bounds.center);
+     lines[4].SetPosition(1, _bounds.min);
+   }
 
     private void CreateDebugOverlay() {
       if (_debugOverlay == null) {
         _debugOverlay = new GameObject("Pathfinder Debug Overlay");
-        _debugOverlay.transform.SetParent(transform);
+        _debugOverlay.transform.SetParent(transform, false);
         _debugParticleSystem = _debugOverlay.AddComponent<ParticleSystem>();
       } else {
         _debugParticleSystem = _debugOverlay.GetComponent<ParticleSystem>();
@@ -70,25 +136,25 @@ namespace Stranded.MechBill {
       main.startLifetime = float.PositiveInfinity;
       //main.startSize = _gridElementSize.magnitude / 4f;
       main.startSize = _gridElementSize / 2f;
-      main.maxParticles = _gridSize * _gridSize * _gridSize;
+      main.maxParticles = _gridSize.x * _gridSize.y * _gridSize.z;
       ParticleSystem.EmissionModule emission = _debugParticleSystem.emission;
       emission.enabled = false;
 
       //Vector3 extents = _gridElementSize * Vector3.one;
       Vector3Int point = new();
 
-      _debugParticles = new ParticleSystem.Particle[_gridSize * _gridSize * _gridSize];
+      _debugParticles = new ParticleSystem.Particle[_gridSize.x * _gridSize.y * _gridSize.z];
       int index = 0;
-      for (point.x = 0; point.x < _gridSize; ++point.x) {
-        for (point.y = 0; point.y < _gridSize; ++point.y) {
-          for (point.z = 0; point.z < _gridSize; ++point.z) {
+      for (point.x = 0; point.x < _gridSize.x; ++point.x) {
+        for (point.y = 0; point.y < _gridSize.y; ++point.y) {
+          for (point.z = 0; point.z < _gridSize.z; ++point.z) {
             _debugParticles[index++] = new ParticleSystem.Particle {
-                position = GridToWorld(point),
-                startColor = _isObstructed[point.x, point.y, point.z]
-                    ? new Color(1.0f, 0.0f, 0.0f, 0.2f)
-                    : new Color(0.0f, 1.0f, 0.0f, 0.1f),
-                startSize = _gridElementSize / 2f,
-                startLifetime = float.PositiveInfinity
+              position = GridToLocal(point),
+              startColor = _isObstructed[point.x, point.y, point.z]
+                ? new Color(1.0f, 0.0f, 0.0f, 0.2f)
+                : new Color(0.0f, 1.0f, 0.0f, 0.1f),
+              startSize = _gridElementSize / 2f,
+              startLifetime = float.PositiveInfinity
             };
           }
         }
@@ -98,8 +164,9 @@ namespace Stranded.MechBill {
       _debugOverlay.SetLayerRecursive(Globals.GhostLayer);
       ParticleSystemRenderer renderer = _debugOverlay.GetComponent<ParticleSystemRenderer>();
       renderer.material =
-          (Resources.Load("Effects/fx_smokeTrail_light", typeof(ParticleSystemRenderer)) as ParticleSystemRenderer)
-          .material;
+        (Resources.Load("Effects/fx_smokeTrail_light", typeof(ParticleSystemRenderer)) as ParticleSystemRenderer)
+        .material;
+      CreateDebugLines();
     }
 
     public List<Vector3> FindPath(Vector3 start, Vector3 end, float radius) {
@@ -112,13 +179,14 @@ namespace Stranded.MechBill {
       Vector3Int startPoint = WorldToGrid(start);
       if (!InBounds(startPoint)) {
         throw new ArgumentOutOfRangeException(nameof(start), start,
-            "Point is outside of grid. Grid coords " + startPoint + " valid values are 0.." + (_gridSize - 1));
+          "Point is outside of grid. Grid coords " + startPoint + " valid values are 0.." +
+          (_gridSize - Vector3Int.one));
       }
 
       Vector3Int endPoint = WorldToGrid(end);
       if (!InBounds(endPoint)) {
         throw new ArgumentOutOfRangeException(nameof(end), end,
-            "Point is outside of grid. Grid coords " + endPoint + " valid values are 0.." + (_gridSize - 1));
+          "Point is outside of grid. Grid coords " + endPoint + " valid values are 0.." + (_gridSize - Vector3Int.one));
       }
 
       int endX = endPoint.x;
@@ -127,12 +195,23 @@ namespace Stranded.MechBill {
 
       int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / transform.lossyScale.x));
 
-      var cameFrom = new Dictionary<ValueTuple<int, int, int>, ValueTuple<int, int, int>>();
+      Dictionary<(int, int, int), (int, int, int)> cameFrom = new();
       //var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
-      bool[,,] visited = new bool[_gridSize, _gridSize, _gridSize];
+      bool[,,] visited = new bool[_gridSize.x, _gridSize.y, _gridSize.z];
       visited[startPoint.x, startPoint.y, startPoint.z] = true;
-      var openSet = new PriorityQueue<ValueTuple<int, int, int>, float>();
+      PriorityQueue<(int, int, int), float> openSet = new();
       openSet.Add((startPoint.x, startPoint.y, startPoint.z), 0.0f);
+      int paddingRadius = Mathf.CeilToInt(_gridElementPadding / _gridElementSize);
+      Vector3Int point = Vector3Int.zero;
+      for (point.x = startPoint.x - paddingRadius; point.x <= startPoint.x + paddingRadius; ++point.x) {
+        for (point.y = startPoint.y - paddingRadius; point.y <= startPoint.y + paddingRadius; ++point.y) {
+          for (point.z = startPoint.z - paddingRadius; point.z <= startPoint.z + paddingRadius; ++point.z) {
+            if (InBounds(point) && !_isObstructed[point.x, point.y, point.z]) {
+              openSet.Add((point.x, point.y, point.z), (point - startPoint).magnitude + (point - endPoint).magnitude);
+            }
+          }
+        }
+      }
 
       while (!openSet.IsEmpty()) {
         PriorityQueue<(int, int, int), float>.MutableKeyValuePair nextNode = openSet.Dequeue();
@@ -160,7 +239,7 @@ namespace Stranded.MechBill {
                   List<Vector3> result = new();
                   bool hasNext;
                   do {
-                    Vector3Int point = new(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
+                    point = new Vector3Int(otherPoint.Item1, otherPoint.Item2, otherPoint.Item3);
                     if (Globals.ShowDebugOverlay) {
                       // FIXME: Need to reset particle colors after path is finished with.
                       _debugParticles[FlattenGrid(point)].startColor = Color.white;
@@ -183,6 +262,7 @@ namespace Stranded.MechBill {
       }
 
       // Pathfinding failed. We should probably do something about that.
+      Debug.LogError("Cannot find path from " + start + " (grid " + startPoint + ") to " + end + " (grid " + endPoint + ").");
       Globals.ShowDebugOverlay = true;
       CreateDebugOverlay();
       _failedPathfinding = true;
@@ -190,13 +270,14 @@ namespace Stranded.MechBill {
     }
 
     protected void RebuildCollisionGrid() {
-      _isObstructed = new bool[_gridSize, _gridSize, _gridSize];
+      _isObstructed = new bool[_gridSize.x, _gridSize.y, _gridSize.z];
       //Vector3 halfExtents = _gridElementSize / 2.0f;
-      Vector3 halfExtents = _gridElementSize * Vector3.one / 2.0f;
+      // Intentionally make hitbox larger to make sure we don't fly too close to anything. 
+      Vector3 halfExtents = (_gridElementSize + _gridElementPadding) * Vector3.one / 2.0f;
       Vector3Int point = new();
-      for (point.x = 0; point.x < _gridSize; ++point.x) {
-        for (point.y = 0; point.y < _gridSize; ++point.y) {
-          for (point.z = 0; point.z < _gridSize; ++point.z) {
+      for (point.x = 0; point.x < _gridSize.x; ++point.x) {
+        for (point.y = 0; point.y < _gridSize.y; ++point.y) {
+          for (point.z = 0; point.z < _gridSize.z; ++point.z) {
             Vector3 worldPos = GridToWorld(point);
             bool isBlocked = Physics.CheckBox(worldPos, halfExtents, transform.rotation, Part.layerMask);
             /*if (isBlocked) {
@@ -218,7 +299,7 @@ namespace Stranded.MechBill {
 
     public bool InBounds(Vector3Int point) {
       for (int i = 0; i < 3; ++i) {
-        if (point[i] < 0 || point[i] >= _gridSize) {
+        if (point[i] < 0 || point[i] >= _gridSize[i]) {
           return false;
         }
       }
@@ -226,24 +307,35 @@ namespace Stranded.MechBill {
       return true;
     }
 
-    public bool InBounds(ValueTuple<int, int, int> point) =>
-        point.Item1 >= 0 && point.Item1 < _gridSize &&
-        point.Item2 >= 0 && point.Item2 < _gridSize &&
-        point.Item3 >= 0 && point.Item3 < _gridSize;
+    public bool InBounds(ValueTuple<int, int, int> point) {
+      return point.Item1 >= 0 && point.Item1 < _gridSize.x &&
+             point.Item2 >= 0 && point.Item2 < _gridSize.y &&
+             point.Item3 >= 0 && point.Item3 < _gridSize.z;
+    }
+
+    public Vector3 GridToLocal(Vector3Int point) {
+      return _gridElementSize * (Vector3)point + _bounds.min;
+    }
+
+    public Vector3Int LocalToGrid(Vector3 point) {
+      return Vector3Int.RoundToInt((point - _bounds.min) / _gridElementSize);
+    }
 
     public Vector3 GridToWorld(Vector3Int point) {
       //return transform.TransformPoint(Vector3.Scale(_gridElementSize, point - _gridSize * Vector3.one / 2.0f));
-      return transform.TransformPoint(_gridElementSize * (point - _gridSize * Vector3.one / 2.0f));
+      //return transform.TransformPoint(_gridElementSize * (Vector3)(point - _gridSize / 2) + transform.InverseTransformPoint(_bounds.center));
+      return transform.TransformPoint(GridToLocal(point));
     }
 
     public int FlattenGrid(Vector3Int point) {
-      return Sqr(_gridSize) * point.x + _gridSize * point.y + point.z;
+      return _gridSize.z * (_gridSize.y * point.x + point.y) + point.z;
     }
 
     public Vector3Int WorldToGrid(Vector3 point) {
       //return Vector3Int.RoundToInt(Vector3.Scale(transform.InverseTransformPoint(point), _invGridElementSize) +
-      return Vector3Int.RoundToInt(transform.InverseTransformPoint(point) / _gridElementSize +
-                                   _gridSize * Vector3.one / 2.0f);
+      //return Vector3Int.RoundToInt((transform.InverseTransformPoint(point) - transform.InverseTransformPoint(_bounds.center)) / _gridElementSize) +
+      //       _gridSize / 2;
+      return LocalToGrid(transform.InverseTransformPoint(point));
     }
   }
 }
