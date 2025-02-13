@@ -14,7 +14,7 @@ namespace Stranded.MechBill {
     private ParticleSystem.Particle[] _debugParticles;
     private ParticleSystem _debugParticleSystem;
     private bool _failedPathfinding;
-    private float _gridElementPadding = 0.5f;
+    private const float _gridElementPadding = 1.5f;
 
     //private Vector3 _gridExtents;
     //private readonly Vector3 _gridElementSize;
@@ -194,24 +194,39 @@ namespace Stranded.MechBill {
       int endZ = endPoint.z;
 
       int sqrRadius = Mathf.FloorToInt(Sqr(radius / _gridElementSize / transform.lossyScale.x));
-
-      Dictionary<(int, int, int), (int, int, int)> cameFrom = new();
-      //var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
-      bool[,,] visited = new bool[_gridSize.x, _gridSize.y, _gridSize.z];
-      visited[startPoint.x, startPoint.y, startPoint.z] = true;
-      PriorityQueue<(int, int, int), float> openSet = new();
-      openSet.Add((startPoint.x, startPoint.y, startPoint.z), 0.0f);
+      
       int paddingRadius = Mathf.CeilToInt(_gridElementPadding / _gridElementSize);
       Vector3Int point = Vector3Int.zero;
+      // Find the nearest unobstructed point to start
+      float nearestDistance = float.MaxValue;
+      Vector3Int startingPoint = startPoint;
       for (point.x = startPoint.x - paddingRadius; point.x <= startPoint.x + paddingRadius; ++point.x) {
         for (point.y = startPoint.y - paddingRadius; point.y <= startPoint.y + paddingRadius; ++point.y) {
           for (point.z = startPoint.z - paddingRadius; point.z <= startPoint.z + paddingRadius; ++point.z) {
             if (InBounds(point) && !_isObstructed[point.x, point.y, point.z]) {
-              openSet.Add((point.x, point.y, point.z), (point - startPoint).magnitude + (point - endPoint).magnitude);
+              float distance = (point - startPoint).sqrMagnitude; // Using sqrMagnitude to avoid sqrt
+              if (distance < nearestDistance) {
+                nearestDistance = distance;
+                startingPoint = point;
+              }
             }
           }
         }
       }
+      
+      // If no unobstructed point was found
+      if (nearestDistance == float.MaxValue) {
+        Debug.LogError("Cannot find unobstructed point within " + paddingRadius + " units of from " + start + " (grid " + startPoint + ").");
+        _failedPathfinding = true;
+        return null;
+      }
+      
+      Dictionary<(int, int, int), (int, int, int)> cameFrom = new();
+      //var visited = new HashSet<ValueTuple<int, int, int>> { (startPoint.x, startPoint.y, startPoint.z) };
+      bool[,,] visited = new bool[_gridSize.x, _gridSize.y, _gridSize.z];
+      visited[startingPoint.x, startingPoint.y, startingPoint.z] = true;
+      PriorityQueue<(int, int, int), float> openSet = new();
+      openSet.Add((startingPoint.x, startingPoint.y, startingPoint.z), 0.0f);
 
       while (!openSet.IsEmpty()) {
         PriorityQueue<(int, int, int), float>.MutableKeyValuePair nextNode = openSet.Dequeue();

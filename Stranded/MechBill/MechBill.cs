@@ -277,7 +277,7 @@ namespace Stranded.MechBill {
       GoingHome = true;
       _pathfinder = _homePart.vessel.GetComponent<Pathfinder>();
       _pathToTarget = null;
-      TgtApproachDistance = 1.0f;
+      TgtApproachDistance = 3.0f;
       // TODO: Have Kerbal board ship on reaching airlock.
     }
 
